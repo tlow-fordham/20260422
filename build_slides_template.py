@@ -1,40 +1,55 @@
 """
-Build slides from slides.yaml using a U.S. Bank template.
+Build slides from slides.yaml using U.S. Bank discussion template.
 
 Usage:
-    1. Place your template as usbank_template.pptx in the same directory
+    1. Place template as U_S_Bank_standard_discussion_temp_cleaned.pptx
     2. Run: python build_slides_template.py
-    3. Open the output and verify layout/font inheritance
+    3. Open output in PowerPoint
 
-Before first run:
-    Run this to inspect your template's available layouts and placeholders:
-        python build_slides_template.py --inspect
+To inspect layouts: python build_slides_template.py --inspect
 
-Dependencies:
-    pip install python-pptx pyyaml
+Dependencies: pip install python-pptx pyyaml
 """
 
 import yaml
 import sys
 from pptx import Presentation
-from pptx.util import Inches, Pt, Emu
-from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
+from pptx.util import Pt
 
 
-TEMPLATE_PATH = "usbank_template.pptx"
+TEMPLATE_PATH = "U_S_Bank_standard_discussion_temp_cleaned.pptx"
 YAML_PATH = "slides.yaml"
 OUTPUT_PATH = "20260423_Agentic_AI_Validation_Best_Practices.pptx"
 
+# ---------------------------------------------------------------------------
+# U.S. Bank template layout mapping (from --inspect output)
+#
+#   Layout 15: "Title subtitle and content 1"
+#       PH 0  = Title          (0.5", 0.5") 9.0" x 1.2"
+#       PH 10 = Subtitle       (0.5", 1.9") 9.0" x 0.7"
+#       PH 1  = Content body   (0.5", 2.6") 9.0" x 4.4"
+#
+#   Layout 21: "Title two subtitle and two content 1"
+#       PH 0  = Title          (0.5", 0.5") 9.0" x 1.2"
+#       PH 10 = Left subtitle  (0.5", 1.9") 4.4" x 0.7"
+#       PH 1  = Left content   (0.5", 2.6") 4.4" x 4.4"
+#       PH 11 = Right subtitle (5.1", 1.9") 4.4" x 0.7"
+#       PH 2  = Right content  (5.1", 2.6") 4.4" x 4.4"
+# ---------------------------------------------------------------------------
 
-# -----------------------------------------------------------------------------
-# Inspect mode: run with --inspect to see what layouts and placeholders exist
-# -----------------------------------------------------------------------------
+LAYOUT_SINGLE = 15    # Title + subtitle + one content area
+LAYOUT_TWO_COL = 21   # Title + two subtitles + two content areas
+
+
+# ---------------------------------------------------------------------------
+# Inspect
+# ---------------------------------------------------------------------------
 
 def inspect_template(path):
-    """Print all layouts and their placeholders so you can pick the right indices."""
     prs = Presentation(path)
     print(f"\nTemplate: {path}")
-    print(f"Slide size: {prs.slide_width / 914400:.1f}\" x {prs.slide_height / 914400:.1f}\"\n")
+    print(f"Slide size: {prs.slide_width / 914400:.1f}\" x "
+          f"{prs.slide_height / 914400:.1f}\"\n")
     for i, layout in enumerate(prs.slide_layouts):
         print(f"Layout {i}: \"{layout.name}\"")
         for ph in layout.placeholders:
@@ -45,231 +60,145 @@ def inspect_template(path):
         print()
 
 
-# -----------------------------------------------------------------------------
-# Helpers — all use template fonts/colors, no hardcoded styles
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Helper: populate a placeholder's text frame with structured paragraphs
+# ---------------------------------------------------------------------------
 
-def set_text(placeholder, text):
-    """Set text on a placeholder, inheriting the template's formatting."""
-    placeholder.text = text
-
-
-def add_textbox(slide, left, top, width, height, text,
-                font_size=None, bold=None, italic=None,
-                alignment=PP_ALIGN.LEFT):
+def fill_placeholder(slide, ph_idx, paragraphs):
     """
-    Add a text box. Only set formatting properties that are explicitly passed.
-    Everything else inherits from the template/theme.
+    Fill a placeholder with a list of paragraph dicts.
+    Each dict: {"text": str, "bold": bool, "italic": bool, "size": int}
+    Only sets formatting attributes that are provided; everything else
+    inherits from the template theme.
     """
-    txBox = slide.shapes.add_textbox(left, top, width, height)
-    tf = txBox.text_frame
-    tf.word_wrap = True
-    tf.auto_size = None
-    tf.margin_top = Emu(0)
-    tf.margin_bottom = Emu(0)
-    tf.margin_left = Emu(0)
-    tf.margin_right = Emu(0)
-    p = tf.paragraphs[0]
-    p.text = text
-    p.alignment = alignment
-    if font_size is not None:
-        p.font.size = Pt(font_size)
-    if bold is not None:
-        p.font.bold = bold
-    if italic is not None:
-        p.font.italic = italic
-    return txBox
+    if ph_idx not in slide.placeholders:
+        print(f"  Warning: placeholder {ph_idx} not found, skipping")
+        return
 
+    tf = slide.placeholders[ph_idx].text_frame
+    tf.clear()
 
-def add_multiline(slide, left, top, width, height, lines,
-                  font_size=None, bold=None):
-    """Add a text box with multiple paragraphs."""
-    txBox = slide.shapes.add_textbox(left, top, width, height)
-    tf = txBox.text_frame
-    tf.word_wrap = True
-    tf.auto_size = None
-    tf.margin_top = Emu(0)
-    tf.margin_bottom = Emu(0)
-    tf.margin_left = Emu(0)
-    tf.margin_right = Emu(0)
-
-    for i, line in enumerate(lines):
+    for i, para in enumerate(paragraphs):
         if i == 0:
             p = tf.paragraphs[0]
         else:
             p = tf.add_paragraph()
-        p.text = line
-        p.space_after = Pt(4)
-        if font_size is not None:
-            p.font.size = Pt(font_size)
-        if bold is not None:
-            p.font.bold = bold
-    return txBox
+
+        p.text = para.get("text", "")
+        p.space_after = Pt(para.get("space_after", 2))
+
+        if "size" in para:
+            p.font.size = Pt(para["size"])
+        if "bold" in para:
+            p.font.bold = para["bold"]
+        if "italic" in para:
+            p.font.italic = para["italic"]
 
 
-# -----------------------------------------------------------------------------
-# Configuration — UPDATE THESE after running --inspect on your template
-# -----------------------------------------------------------------------------
-
-# Layout indices — map to your template's layouts
-LAYOUT_TITLE = 0         # Typically "Title Slide"
-LAYOUT_CONTENT = 1       # Typically "Title and Content" or similar
-LAYOUT_BLANK = 6         # Typically "Blank"
-
-# Placeholder indices — map to your template's placeholders
-PH_TITLE = 0             # Title placeholder index
-PH_SUBTITLE = 1          # Subtitle placeholder index
-PH_BODY = 1              # Body/content placeholder index (often same as subtitle)
-
-
-# -----------------------------------------------------------------------------
-# Slide builders
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Slide 1: Regulatory Foundation
+#   Layout 15 — PH 0 (title), PH 10 (subtitle), PH 1 (body)
+# ---------------------------------------------------------------------------
 
 def build_slide_1(prs, data):
-    """Regulatory Foundation — title + subtitle via placeholders, quotes as textboxes."""
-    layout = prs.slide_layouts[LAYOUT_CONTENT]
-    slide = prs.slides.add_slide(layout)
+    slide = prs.slides.add_slide(prs.slide_layouts[LAYOUT_SINGLE])
 
-    # Use placeholders for title and subtitle
-    if PH_TITLE in slide.placeholders:
-        set_text(slide.placeholders[PH_TITLE], data["title"])
+    # Title
+    slide.placeholders[0].text = data["title"]
 
-    # Build quote content as body text
-    body_lines = []
+    # Subtitle
+    slide.placeholders[10].text = data["subtitle"]
+
+    # Body: quotes + footer
+    body = []
     for q in data["quotes"]:
-        body_lines.append(f"[{q['label']}]")
-        body_lines.append(q["text"])
-        body_lines.append(f"— {q['source']}")
-        body_lines.append("")  # blank line separator
+        body.append({"text": q["label"], "bold": True, "size": 10,
+                     "space_after": 0})
+        body.append({"text": q["text"], "size": 10, "space_after": 0})
+        body.append({"text": q["source"], "italic": True, "size": 9,
+                     "space_after": 6})
 
     if data.get("footer"):
-        body_lines.append(data["footer"])
+        body.append({"text": "", "size": 6, "space_after": 4})
+        body.append({"text": data["footer"], "italic": True, "size": 9})
 
-    if PH_BODY in slide.placeholders:
-        tf = slide.placeholders[PH_BODY].text_frame
-        tf.clear()
-        for i, line in enumerate(body_lines):
-            if i == 0:
-                p = tf.paragraphs[0]
-            else:
-                p = tf.add_paragraph()
-            p.text = line
-            p.space_after = Pt(2)
+    fill_placeholder(slide, 1, body)
 
-            # Make labels and sources slightly smaller
-            if line.startswith("[") and line.endswith("]"):
-                p.font.bold = True
-                p.font.size = Pt(10)
-            elif line.startswith("—"):
-                p.font.italic = True
-                p.font.size = Pt(9)
-            else:
-                p.font.size = Pt(11)
 
+# ---------------------------------------------------------------------------
+# Slide 2: Proposed Template Changes
+#   Layout 15 — PH 0 (title), PH 10 (subtitle), PH 1 (body)
+# ---------------------------------------------------------------------------
 
 def build_slide_2(prs, data):
-    """Proposed Template Changes — title via placeholder, cards as textboxes."""
-    layout = prs.slide_layouts[LAYOUT_CONTENT]
-    slide = prs.slides.add_slide(layout)
+    slide = prs.slides.add_slide(prs.slide_layouts[LAYOUT_SINGLE])
 
     # Title
-    if PH_TITLE in slide.placeholders:
-        set_text(slide.placeholders[PH_TITLE], data["title"])
+    slide.placeholders[0].text = data["title"]
 
-    # Build all cards as body text
-    body_lines = []
+    # Subtitle
+    slide.placeholders[10].text = data["subtitle"]
+
+    # Body: cards + callout
+    body = []
     for card in data["cards"]:
-        body_lines.append(card["heading"])
-        body_lines.append(f"({card['section']})")
-        body_lines.append(card["body"])
-        body_lines.append("")
+        body.append({"text": card["heading"], "bold": True, "size": 10,
+                     "space_after": 0})
+        body.append({"text": card["section"], "italic": True, "size": 8,
+                     "space_after": 0})
+        body.append({"text": card["body"], "size": 9, "space_after": 6})
 
     if data.get("callout"):
-        body_lines.append("Core Principle:")
-        body_lines.append(data["callout"])
+        body.append({"text": "", "size": 6, "space_after": 2})
+        body.append({"text": "Core Principle", "bold": True, "size": 10,
+                     "space_after": 0})
+        body.append({"text": data["callout"], "italic": True, "size": 9})
 
-    if PH_BODY in slide.placeholders:
-        tf = slide.placeholders[PH_BODY].text_frame
-        tf.clear()
-        for i, line in enumerate(body_lines):
-            if i == 0:
-                p = tf.paragraphs[0]
-            else:
-                p = tf.add_paragraph()
-            p.text = line
-            p.space_after = Pt(2)
+    fill_placeholder(slide, 1, body)
 
-            # Headings bold, section refs small, body normal
-            if line in [c["heading"] for c in data["cards"]] or line == "Core Principle:":
-                p.font.bold = True
-                p.font.size = Pt(11)
-            elif line.startswith("(Section"):
-                p.font.italic = True
-                p.font.size = Pt(9)
-            else:
-                p.font.size = Pt(10)
 
+# ---------------------------------------------------------------------------
+# Slide 3: Best Practices (two-column)
+#   Layout 21 — PH 0 (title), PH 10 (left sub), PH 1 (left body),
+#               PH 11 (right sub), PH 2 (right body)
+# ---------------------------------------------------------------------------
 
 def build_slide_3(prs, data):
-    """Best Practices — title via placeholder, two-column content as body text."""
-    layout = prs.slide_layouts[LAYOUT_CONTENT]
-    slide = prs.slides.add_slide(layout)
+    slide = prs.slides.add_slide(prs.slide_layouts[LAYOUT_TWO_COL])
 
     # Title
-    if PH_TITLE in slide.placeholders:
-        set_text(slide.placeholders[PH_TITLE], data["title"])
+    slide.placeholders[0].text = data["title"]
 
-    # Combine left and right columns into sequential body text
-    body_lines = []
+    # Left subtitle
+    slide.placeholders[10].text = data["left_header"]
 
-    # Left column
-    body_lines.append(data["left_header"])
-    body_lines.append("")
+    # Left body: category sections with bullets
+    left = []
     for sec in data["left_sections"]:
-        body_lines.append(sec["heading"])
+        left.append({"text": sec["heading"], "bold": True, "size": 9,
+                     "space_after": 0})
         for bullet in sec["bullets"]:
-            body_lines.append(f"  - {bullet}")
-        body_lines.append("")
+            left.append({"text": f"- {bullet}", "size": 8, "space_after": 1})
+        left.append({"text": "", "size": 4, "space_after": 3})
 
-    # Right column
-    body_lines.append(data["right_header"])
-    body_lines.append("")
+    fill_placeholder(slide, 1, left)
+
+    # Right subtitle
+    slide.placeholders[11].text = data["right_header"]
+
+    # Right body: practice items
+    right = []
     for sec in data["right_sections"]:
-        body_lines.append(sec["heading"])
-        body_lines.append(f"  {sec['body']}")
-        body_lines.append("")
+        right.append({"text": sec["heading"], "bold": True, "size": 9,
+                      "space_after": 0})
+        right.append({"text": sec["body"], "size": 8, "space_after": 4})
 
-    if PH_BODY in slide.placeholders:
-        tf = slide.placeholders[PH_BODY].text_frame
-        tf.clear()
-        for i, line in enumerate(body_lines):
-            if i == 0:
-                p = tf.paragraphs[0]
-            else:
-                p = tf.add_paragraph()
-            p.text = line
-            p.space_after = Pt(1)
-
-            # Section headers bold, bullets normal, column headers bold+larger
-            if line in [data["left_header"], data["right_header"]]:
-                p.font.bold = True
-                p.font.size = Pt(11)
-            elif line in [s["heading"] for s in data["left_sections"]] + \
-                         [s["heading"] for s in data["right_sections"]]:
-                p.font.bold = True
-                p.font.size = Pt(10)
-            elif line.startswith("  - "):
-                p.font.size = Pt(9)
-            elif line.startswith("  "):
-                p.font.size = Pt(9)
-            else:
-                p.font.size = Pt(10)
+    fill_placeholder(slide, 2, right)
 
 
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Main
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 
 def main():
     if "--inspect" in sys.argv:
@@ -288,20 +217,15 @@ def main():
     }
 
     for slide_data in content["slides"]:
-        layout = slide_data["layout"]
-        builder = builders.get(layout)
+        layout_key = slide_data["layout"]
+        builder = builders.get(layout_key)
         if builder:
             builder(prs, slide_data)
         else:
-            print(f"Warning: unknown layout '{layout}', skipping.")
+            print(f"Warning: unknown layout '{layout_key}', skipping.")
 
     prs.save(OUTPUT_PATH)
     print(f"Saved: {OUTPUT_PATH}")
-    print(f"\nNext steps:")
-    print(f"  1. Open {OUTPUT_PATH} in PowerPoint")
-    print(f"  2. Check that fonts and colors match your template theme")
-    print(f"  3. If placeholders are wrong, run: python {sys.argv[0]} --inspect")
-    print(f"     and update LAYOUT_*/PH_* constants at the top of the script")
 
 
 if __name__ == "__main__":
