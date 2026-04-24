@@ -1,183 +1,102 @@
-"""
-Build slides from slides.yaml using U.S. Bank template.
+slides:
 
-Layout mapping:
-  - "title"      -> Layout 13 (Title and content 2): PH0=title, textbox for subtitle
-  - "single"     -> Layout 13 (Title and content 2): PH0=title, textbox for body
-  - "two_column" -> Layout 21 (Title two subtitle and two content 1):
-                     PH0=title, PH10=left subtitle, PH1=left content,
-                     PH11=right subtitle, PH2=right content
+  - layout: "title"
+    title: "How We Validate Agentic AI Models"
+    subtitle: "A consistent approach across projects, prioritized by materiality"
+    footer: "MRM Validation - AI Center of Excellence | April 2026"
 
-Usage:
-  python build_slides.py [template.pptx] [slides.yaml] [output.pptx]
-"""
+  - layout: "two_column"
+    title: "Classify First, Then Assess"
+    left_header: "Architecture Classification"
+    left_sections:
+      - heading: "1. What components exist"
+        bullets:
+          - "Persistent memory across sessions? (yes/no)"
+          - "Separate planning module? (yes/no)"
+          - "Reflection or self-evaluation loop? (yes/no)"
+          - "If no, document design rationale - do not test what is absent"
+      - heading: "2. Tool selection"
+        bullets:
+          - "High discretion: many tools (10+), LLM decides order"
+          - "Low discretion: few tools, sequence enforced by code or API"
+    right_header: "Worked Examples"
+    right_sections:
+      - bullets:
+          - "7409: 5 tools, low discretion - code prerequisites enforce order, numbered stages in prompt also enforce order; no memory, no reflection, no planner"
+          - "7724: 4 tools, low discretion - fixed prompt calls same tools in same order every time"
 
-import sys
-import yaml
-from pptx import Presentation
-from pptx.util import Inches, Pt
-from pptx.enum.text import PP_ALIGN
+  - layout: "single"
+    title: "Tier 1 - Always Validate"
+    sections:
+      - bullets:
+          - "Task completion accuracy - does the agent produce the correct final output?"
+          - "Output safety and scope adherence - toxicity, PII, unauthorized commitments, staying in scope"
+          - "Escalation reliability - correct handoff to human when triggered"
+          - "Data isolation - agent accesses only the active session's data, no cross-customer leakage"
+          - "System prompt and tool code review"
+          - "MO test methodology and results review against source evidence"
+          - "MO business metrics review"
+          - "Trace review for explainability - can decisions be traced through logs?"
 
-TEMPLATE_PATH = sys.argv[1] if len(sys.argv) > 1 else "U_S_Bank_standard_discussion_temp_cleaned.pptx"
-YAML_PATH = sys.argv[2] if len(sys.argv) > 2 else "slides.yaml"
-OUTPUT_PATH = sys.argv[3] if len(sys.argv) > 3 else "20260424_Agentic_AI_Validation_Best_Practices.pptx"
+  - layout: "two_column"
+    title: "Tier 2 and Tier 3"
+    left_header: "Tier 2 - Scope by Architecture and Use Case"
+    left_sections:
+      - bullets:
+          - "Tool selection accuracy - Tier 1 if high discretion; use error counts if low discretion"
+          - "Upstream model dependency - does a speech or evaluator model affect downstream accuracy?"
+          - "Guardrail quantitative results - bypass rate and false positive rate from structured testing"
+          - "Benchmarking - what LLM alternatives were considered and how did they compare?"
+          - "SME flagging process - documented procedure for SMEs to review traces and escalate concerns"
+    right_header: "Tier 3 - Defer to Monitoring"
+    right_sections:
+      - bullets:
+          - "Sensitivity and robustness - response stability under rephrasing, noise, long contexts; implicit if MO test cases are sufficient"
+          - "LLM evaluator alignment - document evaluator model and its limitations; elevates when evaluator scores drive production decisions"
+          - "Component-level error attribution - which component caused the error (e.g., speech model vs. reasoning model); root cause on errors"
 
-LAYOUT_SINGLE = 14   # Title and content (latest number for right background)
-LAYOUT_TWO_COL = 23  # Title two subtitle and two content 3 (latest)
+  - layout: "two_column"
+    title: "Construction Review and Model Selection (Sec. 7.2/Sec. 7.3)"
+    left_header: "Always Review"
+    left_sections:
+      - bullets:
+          - "End-to-end agent flow and stage logic"
+          - "System prompt as a code artifact (versioned, diff-able)"
+          - "Tool code and schema definitions"
+          - "Guardrail layering (prompt-based, runtime enforcement, structural)"
+          - "Architectural caps (turn limits, retry limits, escalation triggers)"
+          - "LLM selection: model, version, temperature, context window"
+    right_header: "LLM Selection and Alternatives"
+    right_sections:
+      - heading: "Depth is proportional"
+        body: "Always document what LLM was selected and key hyperparameters. If the model tests well and the choice is defensible on its face, a brief rationale is sufficient."
+      - heading: "Go deeper when"
+        bullets:
+          - "Model performance is weak or inconsistent"
+          - "LLM choice is unusual for the use case"
+          - "Fine-tuning was considered but rejected (document why)"
+          - "Multiple LLMs were benchmarked (document comparison)"
+      - heading: "Skip"
+        body: "Exhaustive vendor comparison when the model tests well and the LLM choice is standard."
 
-# Content area for Layout 14 textbox (matches PH 10 position)
-CONTENT_LEFT = Inches(0.5)
-CONTENT_TOP = Inches(2.1)
-CONTENT_WIDTH = Inches(9.0)
-CONTENT_HEIGHT = Inches(4.9)
-
-FONT_NAME = "US Bank Circular"
-
-
-def clean_text(text):
-    """Replace em-dashes and other problem characters with plain equivalents."""
-    if not text:
-        return ""
-    text = text.replace("\u2014", "-")   # em-dash
-    text = text.replace("\u2013", "-")   # en-dash
-    text = text.replace("\u2018", "'")   # left single quote
-    text = text.replace("\u2019", "'")   # right single quote
-    text = text.replace("\u201c", '"')   # left double quote
-    text = text.replace("\u00a7", "Sec. ")  # section symbol
-    return text
-
-
-def add_para(tf, text, size=10, bold=False, italic=False, space_after=2, indent=0, first=False, use_template_font=False):
-    """Add a paragraph to a text frame."""
-    text = clean_text(text)
-    if first:
-        p = tf.paragraphs[0]
-    else:
-        p = tf.add_paragraph()
-    
-    run = p.add_run()
-    run.text = text
-    if not use_template_font:
-        run.font.size = Pt(size)
-        run.font.name = FONT_NAME
-    run.font.bold = bold if bold else None
-    run.font.italic = italic if italic else None
-    p.space_after = Pt(space_after)
-    if indent:
-        p.level = indent
-    return p
-
-
-def render_sections(tf, sections, first_para=True, heading_size=11, body_size=10, use_template_font=False):
-    """Render a list of section dicts (heading, body, bullets) into a text frame."""
-    is_first = first_para
-    for sec in sections:
-        if isinstance(sec, dict):
-            heading = sec.get("heading", "")
-            if heading:
-                add_para(tf, heading, size=heading_size, bold=True, space_after=2,
-                         first=is_first, use_template_font=use_template_font)
-                is_first = False
-            
-            body = sec.get("body", "")
-            if body:
-                add_para(tf, body, size=body_size, space_after=4,
-                         first=is_first, use_template_font=use_template_font)
-                is_first = False
-            
-            for bullet in sec.get("bullets", []):
-                add_para(tf, "\u2022 " + bullet, size=body_size, space_after=2, indent=1,
-                         first=is_first, use_template_font=use_template_font)
-                is_first = False
-    return is_first
-
-
-def build_title_slide(prs, data):
-    """Title slide using Layout 13 with subtitle in a textbox."""
-    slide = prs.slides.add_slide(prs.slide_layouts[LAYOUT_SINGLE])
-    slide.placeholders[0].text = clean_text(data["title"])
-    
-    txBox = slide.shapes.add_textbox(CONTENT_LEFT, CONTENT_TOP, CONTENT_WIDTH, CONTENT_HEIGHT)
-    tf = txBox.text_frame
-    tf.word_wrap = True
-    
-    subtitle = data.get("subtitle", "")
-    if subtitle:
-        add_para(tf, subtitle, size=12, italic=True, space_after=6, first=True)
-    
-    footer = data.get("footer", "")
-    if footer:
-        add_para(tf, "", size=6, space_after=2)
-        add_para(tf, footer, size=8, italic=True)
-
-
-def build_single_slide(prs, data):
-    """Single-column content slide using Layout 14 with native placeholder."""
-    slide = prs.slides.add_slide(prs.slide_layouts[LAYOUT_SINGLE])
-    slide.placeholders[0].text = clean_text(data["title"])
-    
-    # Content (PH 10) - use template font
-    tf = slide.placeholders[10].text_frame
-    tf.clear()
-    
-    sections = data.get("sections", [])
-    render_sections(tf, sections, first_para=True, use_template_font=True)
-
-
-def build_two_column_slide(prs, data):
-    """Two-column slide using Layout 23 with native placeholders.
-    Layout 23 has: PH0=title, PH10=left subtitle, PH1=left content,
-                   PH11=right subtitle, PH2=right content.
-    Native placeholders inherit US Bank Circular font from template."""
-    slide = prs.slides.add_slide(prs.slide_layouts[LAYOUT_TWO_COL])
-    
-    # Title (PH 0) - inherits template font (US Bank Circular 28)
-    slide.placeholders[0].text = clean_text(data["title"])
-    
-    # Left subtitle (PH 10) - inherits template font (US Bank Circular 20 bold)
-    left_header = data.get("left_header", "")
-    if left_header:
-        slide.placeholders[10].text = clean_text(left_header)
-    
-    # Right subtitle (PH 11) - inherits template font (US Bank Circular 20 bold)
-    right_header = data.get("right_header", "")
-    if right_header:
-        slide.placeholders[11].text = clean_text(right_header)
-    
-    # Left content (PH 1) - use template font
-    left_tf = slide.placeholders[1].text_frame
-    left_tf.clear()
-    left_sections = data.get("left_sections", [])
-    render_sections(left_tf, left_sections, first_para=True, use_template_font=True)
-    
-    # Right content (PH 2) - use template font
-    right_tf = slide.placeholders[2].text_frame
-    right_tf.clear()
-    right_sections = data.get("right_sections", [])
-    render_sections(right_tf, right_sections, first_para=True, use_template_font=True)
-
-
-# --- Main ---
-
-with open(YAML_PATH, "r") as f:
-    content = yaml.safe_load(f)
-
-prs = Presentation(TEMPLATE_PATH)
-
-builders = {
-    "title": build_title_slide,
-    "single": build_single_slide,
-    "two_column": build_two_column_slide,
-}
-
-for slide_data in content["slides"]:
-    layout_key = slide_data["layout"]
-    builder = builders.get(layout_key)
-    if builder:
-        builder(prs, slide_data)
-    else:
-        print(f"Warning: unknown layout '{layout_key}', skipping.")
-
-prs.save(OUTPUT_PATH)
-print(f"Saved: {OUTPUT_PATH}")
-print(f"Slides: {len(prs.slides)}")
+  - layout: "two_column"
+    title: "Key Practices and Regulatory Grounding"
+    left_header: "Practices"
+    left_sections:
+      - heading: "Structural enforcement is evidence"
+        body: "Code prerequisites, schema validation, session-scoped data stores close risk categories by design. Document as closing evidence."
+      - heading: "MO tests, Validation assesses"
+        body: "Assess methodology, verify against logs and traces. Do not substitute testing where we lack expertise or access."
+      - heading: "Metrics by risk intent"
+        body: "Map MO metrics to risk, not template vocabulary. Do not require a specific evaluation method when the underlying risk is already covered."
+    right_header: "SR 2026-13a Principles"
+    right_sections:
+      - heading: "Footnote 3"
+        body: "GenAI/agentic AI explicitly outside scope. Bank develops tailored framework."
+      - heading: "Proportionality (Sec. III)"
+        body: "\"Tailor practices... commensurate with that risk.\""
+      - heading: "Method flexibility (Sec. V)"
+        body: "\"Outcomes analysis can take many forms.\""
+      - heading: "Testing ownership (Sec. IV)"
+        body: "\"Model testing is a core component of model development.\""
+    footer: "MRM Validation - AI Center of Excellence | April 2026"
