@@ -22,7 +22,7 @@ slides:
     right_header: "Worked Examples"
     right_sections:
       - bullets:
-          - "7409: 5 tools, low discretion - code prerequisites enforce order; no memory, no reflection, no planner"
+          - "7409: 5 tools, low discretion - code prerequisites enforce order, numbered stages in prompt also enforce order; no memory, no reflection, no planner"
           - "7724: 4 tools, low discretion - fixed prompt calls same tools in same order every time"
 
   - layout: "single"
