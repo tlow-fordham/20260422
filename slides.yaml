@@ -1,183 +1,133 @@
-# How We Validate Agentic AI Models
-
-**MRM Validation - AI Center of Excellence | April 2026**
-
-
----
-
-
-## Slide 1: General Principles
-
-
-### Classify, then assess
-
-- Not every agentic AI has the same components. Validation classifies the architecture before starting review to determine which assessments apply.
-- The current validation template prescribes specific metrics such as precision, recall, and F1 per tool-calling step, or LLM-as-Judge evaluation of planning quality. These are appropriate for some architectures but not all. Validation should be clear upfront on which risk categories apply.
-
-### Assess, not test
-
-- The model owner builds and tests. Validation assesses methodology, verifies results against source evidence such as trace logs, and performs sampled trace review.
-- SR 2026-13a places testing in Model Development and assessment in Validation. That is the right division of responsibility, especially where the validator may not have the domain expertise or access to run the tests.
-
-### Structural enforcement is evidence
-
-- Where the architecture makes a risk structurally infeasible, Validation documents the mitigation as closing evidence and scopes down testing.
-- We want to encourage model owners to construct robust models and give them credit for it, rather than putting all information into a single prompt and asking the LLM to decide based on probabilistic judgment. Good architecture reduces validation scope.
-
----
-
-
-## Slide 2: Regulatory Grounding (SR 2026-13a)
-
-
-### Scope
-
-- GenAI and agentic AI are explicitly outside the scope of SR 2026-13a (Footnote 3). The bank develops a tailored framework applying the guidance's principles to these models.
-
-### Proportionality (Sec. III)
-
-- "A banking organization may tailor portions of its model risk management practices that are relevant to the risks posed by a particular model and with a level of rigor commensurate with that risk."
-
-### Method flexibility (Sec. V)
-
-- "Outcomes analysis can take many forms, including testing conducted during model development, reports or analysis performed as part of ongoing monitoring, or standalone activities."
-
-### Testing ownership (Sec. IV)
-
-- "Model testing is a core component of model development. The specific approach depends on the model's characteristics."
-
-### Alternative assessments (Sec. V)
-
-- "While evaluating theoretical construction may be important for some models, other assessments may be more practical for other models."
-
----
-
-
-## Slide 3: High Priority - What Validation Reviews
-
-
-### Performance
-
-- Validation reviews task completion accuracy to confirm the agent produces correct final outputs.
-- Validation assesses the model owner's test methodology and verifies results against source evidence.
-- Validation reviews the model owner's business metrics to confirm they are defined and aligned with the intended use.
-
-### Safety and Guardrails
-
-- Validation reviews output safety controls covering toxicity, PII handling, and unauthorized commitments.
-- Validation reviews escalation logic to confirm the agent hands off to a human agent when required.
-- Validation reviews data isolation to confirm the agent accesses only the active session's data with no cross-customer leakage.
-
-### Construction and Explainability
-
-- Validation reviews the system prompt and tool code as versioned artifacts.
-- Validation performs sampled trace review to confirm that agent decisions can be traced end-to-end through logs.
-
----
-
-
-## Slide 4: Medium Priority - Scope by Architecture and Use Case
-
-
-### Performance
-
-- Validation reviews tool selection accuracy. High priority for high-discretion agents; for low-discretion agents, Validation relies on tool error counts and outcome metrics.
-- Validation reviews upstream model dependencies to assess whether a speech model or evaluator model affects downstream accuracy.
-
-### Safety and Guardrails
-
-- Validation reviews guardrail quantitative results including bypass rate and false positive rate where the model owner conducted structured adversarial testing.
-
-### Construction and Explainability
-
-- Validation reviews what LLM alternatives were considered and the rationale for the final selection.
-- Validation reviews whether a documented procedure exists for SMEs to review agent traces and escalate concerns.
-
----
-
-
-## Slide 5: Low Priority - Defer to Monitoring
-
-
-### Performance
-
-- Sensitivity and robustness testing evaluates response stability under rephrasing, noise, and long contexts. This should be implicitly covered if the model owner's test cases provide sufficient coverage.
-- Component-level error attribution identifies which component caused an error. If pressed for time, Validation reviews final outputs first and root-causes on errors.
-
-### Construction
-
-- LLM evaluator alignment confirms the evaluator model's limitations are documented. Evaluator models make mistakes like human evaluators; document the limitations and move on.
-- Design-rationale depth for LLM selection (why one vendor over another, why not fine-tuning) can be deprioritized if the model tests well and the choice is standard for the architecture.
-
----
-
-
-## Slide 6: Architecture Classification
-
-
-### 1. What components exist
-
-- Persistent memory across sessions? (yes/no)
-- Separate planning module? (yes/no)
-- Reflection or self-evaluation loop? (yes/no)
-- If a component is absent, Validation documents the design rationale rather than flagging a testing gap.
-
-### 2. Tool selection discretion
-
-- High discretion: many tools (10+), LLM decides which tool to call and in what order.
-- Low discretion: few tools, sequence enforced by code-level prerequisites, API validation, or fixed prompt stages.
-
-### Worked examples
-
-- An IVR dispute intake agent with five tools, low discretion. Code-level prerequisites enforce tool order. Numbered stages in the system prompt also enforce sequence.
-- A LangChain document processing agent with four tools, low discretion. The prompt is static and calls the same four tools in the same fixed order.
-
----
-
-
-## Slide 7: Appendix - Construction Review and Model Selection
-
-
-### What Validation Always Reviews
-
-- End-to-end agent flow and stage logic.
-- System prompt as a versioned, diff-able code artifact.
-- Tool code and schema definitions.
-- Guardrail layering across prompt-based instructions, runtime enforcement, and structural controls.
-- Architectural caps including turn limits, retry limits, and escalation triggers.
-- LLM selection including model name, version, temperature, and context window configuration.
-
-### LLM Selection Depth
-
-
-**Depth is proportional**
-
-
-Validation always documents what LLM was selected and its key hyperparameters. If the model tests well and the choice is defensible on its face, a brief rationale is sufficient.
-
-
-**Validation goes deeper when**
-
-- Model performance is weak or inconsistent.
-- The LLM choice is unusual for the use case.
-- Fine-tuning was considered but rejected.
-- Multiple LLMs were benchmarked during development.
-
-**Skip**
-
-
-Exhaustive vendor comparison when the model tests well and the LLM choice is standard for the architecture.
-
-
----
-
-
-## Slide 8: Appendix - Preconditions for Effective Validation
-
-
-### What makes the validation approach work
-
-- The model owner provides a working demonstration of the model before validation begins. Early demos have surfaced functional failures requiring material prompt and architecture changes mid-review, effectively resetting the validation clock.
-- The model owner commits to weekly meetings with consistent attendance by technical leads who can answer architecture, testing, and implementation questions. Multi-week communication gaps leave no room for progress.
-- All model owner testing, including SME evaluation, is complete and documented before kickoff. Agentic AI testing requires dynamic multi-turn interaction that the validator cannot independently replicate within a compressed timeline. Where testing is incomplete at kickoff, the validation clock should not start.
-- Standard documentation requirements apply. The model owner submits the complete GenAI development documentation package, an accurate EMA reflecting the current scope and use case, and the implementation framework and monitoring plan templates before the validation period begins.
+slides:
+
+  - layout: "single"
+    title: "General Principles"
+    sections:
+      - heading: "Classify, then assess"
+        bullets:
+          - "Not every agentic AI has the same components. Validation classifies the architecture before starting review to determine which assessments apply."
+          - "The current validation template prescribes specific metrics such as precision, recall, and F1 per tool-calling step, or LLM-as-Judge evaluation of planning quality. These are appropriate for some architectures but not all. Validation should be clear upfront on which risk categories apply."
+      - heading: "Assess, not test"
+        bullets:
+          - "The model owner builds and tests. Validation assesses methodology, verifies results against source evidence such as trace logs, and performs sampled trace review."
+          - "SR 2026-13a places testing in Model Development and assessment in Validation. That is the right division of responsibility, especially where the validator may not have the domain expertise or access to run the tests."
+      - heading: "Structural enforcement is evidence"
+        bullets:
+          - "Where the architecture makes a risk structurally infeasible, Validation documents the mitigation as closing evidence and scopes down testing."
+          - "We want to encourage model owners to construct robust models and give them credit for it, rather than putting all information into a single prompt and asking the LLM to decide based on probabilistic judgment. Good architecture reduces validation scope."
+
+  - layout: "single"
+    title: "Regulatory Grounding (SR 2026-13a)"
+    sections:
+      - heading: "Scope"
+        bullets:
+          - "GenAI and agentic AI are explicitly outside the scope of SR 2026-13a (Footnote 3). The bank develops a tailored framework applying the guidance's principles to these models."
+      - heading: "Proportionality (Sec. III)"
+        bullets:
+          - "\"A banking organization may tailor portions of its model risk management practices that are relevant to the risks posed by a particular model and with a level of rigor commensurate with that risk.\""
+      - heading: "Method flexibility (Sec. V)"
+        bullets:
+          - "\"Outcomes analysis can take many forms, including testing conducted during model development, reports or analysis performed as part of ongoing monitoring, or standalone activities.\""
+      - heading: "Testing ownership (Sec. IV)"
+        bullets:
+          - "\"Model testing is a core component of model development. The specific approach depends on the model's characteristics.\""
+      - heading: "Alternative assessments (Sec. V)"
+        bullets:
+          - "\"While evaluating theoretical construction may be important for some models, other assessments may be more practical for other models.\""
+
+  - layout: "single"
+    title: "High Priority - What Validation Reviews"
+    sections:
+      - heading: "Performance"
+        bullets:
+          - "Validation reviews task completion accuracy to confirm the agent produces correct final outputs."
+          - "Validation assesses the model owner's test methodology and verifies results against source evidence."
+          - "Validation reviews the model owner's business metrics to confirm they are defined and aligned with the intended use."
+      - heading: "Safety and Guardrails"
+        bullets:
+          - "Validation reviews output safety controls covering toxicity, PII handling, and unauthorized commitments."
+          - "Validation reviews escalation logic to confirm the agent hands off to a human agent when required."
+          - "Validation reviews data isolation to confirm the agent accesses only the active session's data with no cross-customer leakage."
+      - heading: "Construction and Explainability"
+        bullets:
+          - "Validation reviews the system prompt and tool code as versioned artifacts."
+          - "Validation performs sampled trace review to confirm that agent decisions can be traced end-to-end through logs."
+
+  - layout: "single"
+    title: "Medium Priority - Scope by Architecture and Use Case"
+    sections:
+      - heading: "Performance"
+        bullets:
+          - "Validation reviews tool selection accuracy. High priority for high-discretion agents; for low-discretion agents, Validation relies on tool error counts and outcome metrics."
+          - "Validation reviews upstream model dependencies to assess whether a speech model or evaluator model affects downstream accuracy."
+      - heading: "Safety and Guardrails"
+        bullets:
+          - "Validation reviews guardrail quantitative results including bypass rate and false positive rate where the model owner conducted structured adversarial testing."
+      - heading: "Construction and Explainability"
+        bullets:
+          - "Validation reviews what LLM alternatives were considered and the rationale for the final selection."
+          - "Validation reviews whether a documented procedure exists for SMEs to review agent traces and escalate concerns."
+
+  - layout: "single"
+    title: "Low Priority - Defer to Monitoring"
+    sections:
+      - heading: "Performance"
+        bullets:
+          - "Sensitivity and robustness testing evaluates response stability under rephrasing, noise, and long contexts. This should be implicitly covered if the model owner's test cases provide sufficient coverage."
+          - "Component-level error attribution identifies which component caused an error. If pressed for time, Validation reviews final outputs first and root-causes on errors."
+      - heading: "Construction"
+        bullets:
+          - "LLM evaluator alignment confirms the evaluator model's limitations are documented. Evaluator models make mistakes like human evaluators; document the limitations and move on."
+          - "Design-rationale depth for LLM selection (why one vendor over another, why not fine-tuning) can be deprioritized if the model tests well and the choice is standard for the architecture."
+
+  - layout: "single"
+    title: "Architecture Classification"
+    sections:
+      - heading: "1. What components exist"
+        bullets:
+          - "Persistent memory across sessions? (yes/no)"
+          - "Separate planning module? (yes/no)"
+          - "Reflection or self-evaluation loop? (yes/no)"
+          - "If a component is absent, Validation documents the design rationale rather than flagging a testing gap."
+      - heading: "2. Tool selection discretion"
+        bullets:
+          - "High discretion: many tools (10+), LLM decides which tool to call and in what order."
+          - "Low discretion: few tools, sequence enforced by code-level prerequisites, API validation, or fixed prompt stages."
+      - heading: "Worked examples"
+        bullets:
+          - "An IVR dispute intake agent with five tools, low discretion. Code-level prerequisites enforce tool order. Numbered stages in the system prompt also enforce sequence."
+          - "A LangChain document processing agent with four tools, low discretion. The prompt is static and calls the same four tools in the same fixed order."
+
+  - layout: "two_column"
+    title: "Appendix - Construction Review and Model Selection"
+    left_header: "What Validation Always Reviews"
+    left_sections:
+      - bullets:
+          - "End-to-end agent flow and stage logic."
+          - "System prompt as a versioned, diff-able code artifact."
+          - "Tool code and schema definitions."
+          - "Guardrail layering across prompt-based instructions, runtime enforcement, and structural controls."
+          - "Architectural caps including turn limits, retry limits, and escalation triggers."
+          - "LLM selection including model name, version, temperature, and context window configuration."
+    right_header: "LLM Selection Depth"
+    right_sections:
+      - heading: "Depth is proportional"
+        body: "Validation always documents what LLM was selected and its key hyperparameters. If the model tests well and the choice is defensible on its face, a brief rationale is sufficient."
+      - heading: "Validation goes deeper when"
+        bullets:
+          - "Model performance is weak or inconsistent."
+          - "The LLM choice is unusual for the use case."
+          - "Fine-tuning was considered but rejected."
+          - "Multiple LLMs were benchmarked during development."
+      - heading: "Skip"
+        body: "Exhaustive vendor comparison when the model tests well and the LLM choice is standard for the architecture."
+
+  - layout: "single"
+    title: "Appendix - Preconditions for Effective Validation"
+    sections:
+      - heading: "What makes the validation approach work"
+        bullets:
+          - "The model owner provides a working demonstration of the model before validation begins. Early demos have surfaced functional failures requiring material prompt and architecture changes mid-review, effectively resetting the validation clock."
+          - "The model owner commits to weekly meetings with consistent attendance by technical leads who can answer architecture, testing, and implementation questions. Multi-week communication gaps leave no room for progress."
+          - "All model owner testing, including SME evaluation, is complete and documented before kickoff. Agentic AI testing requires dynamic multi-turn interaction that the validator cannot independently replicate within a compressed timeline. Where testing is incomplete at kickoff, the validation clock should not start."
+          - "Standard documentation requirements apply. The model owner submits the complete GenAI development documentation package, an accurate EMA reflecting the current scope and use case, and the implementation framework and monitoring plan templates before the validation period begins."
