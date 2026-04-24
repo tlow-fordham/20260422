@@ -29,35 +29,34 @@ slides:
     title: "Tier 1 - Always Validate"
     sections:
       - bullets:
-          - "Task completion accuracy"
-          - "Output safety (toxicity, PII, unauthorized commitments)"
-          - "Escalation reliability"
-          - "Data isolation"
+          - "Task completion accuracy - does the agent produce the correct final output?"
+          - "Output safety and scope adherence - toxicity, PII, unauthorized commitments, staying in scope"
+          - "Escalation reliability - correct handoff to human when triggered"
+          - "Data isolation - agent accesses only the active session's data, no cross-customer leakage"
           - "System prompt and tool code review"
           - "MO test methodology and results review against source evidence"
           - "MO business metrics review"
-          - "Sampled trace review"
+          - "Trace review for explainability - can decisions be traced through logs?"
 
   - layout: "two_column"
     title: "Tier 2 and Tier 3"
     left_header: "Tier 2 - Scope by Architecture and Use Case"
     left_sections:
       - bullets:
-          - "Tool selection (Tier 1 if high discretion; use error counts if low discretion)"
-          - "Conversation boundary integrity"
-          - "Upstream model dependency"
-          - "Guardrail quantitative results (bypass rate, false positive rate)"
-          - "Benchmarking (what alternatives were considered)"
-          - "Explainability process (documented SME review and flagging procedure)"
+          - "Tool selection accuracy - Tier 1 if high discretion; use error counts if low discretion"
+          - "Upstream model dependency - does a speech or evaluator model affect downstream accuracy?"
+          - "Guardrail quantitative results - bypass rate and false positive rate from structured testing"
+          - "Benchmarking - what LLM alternatives were considered and how did they compare?"
+          - "SME flagging process - documented procedure for SMEs to review traces and escalate concerns"
     right_header: "Tier 3 - Defer to Monitoring"
     right_sections:
       - bullets:
-          - "Sensitivity/robustness - implicit if test cases are sufficient"
-          - "LLM evaluator alignment - document limitations; elevates when evaluator scores drive production decisions"
-          - "Component-level attribution - root cause on errors"
+          - "Sensitivity and robustness - response stability under rephrasing, noise, long contexts; implicit if MO test cases are sufficient"
+          - "LLM evaluator alignment - document evaluator model and its limitations; elevates when evaluator scores drive production decisions"
+          - "Component-level error attribution - which component caused the error (e.g., speech model vs. reasoning model); root cause on errors"
 
   - layout: "two_column"
-    title: "Construction Review and Model Selection (§7.2/§7.3)"
+    title: "Construction Review and Model Selection (Sec. 7.2/Sec. 7.3)"
     left_header: "Always Review"
     left_sections:
       - bullets:
@@ -94,10 +93,10 @@ slides:
     right_sections:
       - heading: "Footnote 3"
         body: "GenAI/agentic AI explicitly outside scope. Bank develops tailored framework."
-      - heading: "Proportionality (§III)"
+      - heading: "Proportionality (Sec. III)"
         body: "\"Tailor practices... commensurate with that risk.\""
-      - heading: "Method flexibility (§V)"
+      - heading: "Method flexibility (Sec. V)"
         body: "\"Outcomes analysis can take many forms.\""
-      - heading: "Testing ownership (§IV)"
+      - heading: "Testing ownership (Sec. IV)"
         body: "\"Model testing is a core component of model development.\""
     footer: "MRM Validation - AI Center of Excellence | April 2026"
