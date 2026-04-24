@@ -56,7 +56,7 @@ slides:
           - "Component-level error attribution - which component caused the error (e.g., speech model vs. reasoning model); root cause on errors"
 
   - layout: "two_column"
-    title: "Construction Review and Model Selection (Sec. 7.2/Sec. 7.3)"
+    title: "Construction Review and Model Selection"
     left_header: "Always Review"
     left_sections:
       - bullets:
