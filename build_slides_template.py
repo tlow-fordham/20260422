@@ -51,7 +51,7 @@ def ensure_placeholder(slide, layout, ph_idx):
         return slide.placeholders[ph_idx]
 
     # Find it in the layout XML
-    layout_spTree = layout.slide_layout.element.find(qn("p:cSld")).find(qn("p:spTree"))
+    layout_spTree = layout.element.find(qn("p:cSld")).find(qn("p:spTree"))
     for sp in layout_spTree.iter(qn("p:sp")):
         nvSpPr = sp.find(qn("p:nvSpPr"))
         if nvSpPr is None:
