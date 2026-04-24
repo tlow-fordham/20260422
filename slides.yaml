@@ -3,7 +3,7 @@ slides:
   - layout: "title"
     title: "How We Validate Agentic AI Models"
     subtitle: "A consistent approach across projects, prioritized by materiality"
-    footer: "MRM Validation — AI Center of Excellence | April 2026"
+    footer: "MRM Validation - AI Center of Excellence | April 2026"
 
   - layout: "two_column"
     title: "Classify First, Then Assess"
@@ -14,7 +14,7 @@ slides:
           - "Persistent memory across sessions? (yes/no)"
           - "Separate planning module? (yes/no)"
           - "Reflection or self-evaluation loop? (yes/no)"
-          - "If no, document design rationale — do not test what is absent"
+          - "If no, document design rationale - do not test what is absent"
       - heading: "2. Tool selection"
         bullets:
           - "High discretion: many tools (10+), LLM decides order"
@@ -22,11 +22,11 @@ slides:
     right_header: "Worked Examples"
     right_sections:
       - bullets:
-          - "7409: 5 tools, low discretion — code prerequisites enforce order; no memory, no reflection, no planner"
-          - "7724: 4 tools, low discretion — fixed prompt calls same tools in same order every time"
+          - "7409: 5 tools, low discretion - code prerequisites enforce order; no memory, no reflection, no planner"
+          - "7724: 4 tools, low discretion - fixed prompt calls same tools in same order every time"
 
   - layout: "single"
-    title: "Tier 1 — Always Validate"
+    title: "Tier 1 - Always Validate"
     sections:
       - bullets:
           - "Task completion accuracy"
@@ -40,7 +40,7 @@ slides:
 
   - layout: "two_column"
     title: "Tier 2 and Tier 3"
-    left_header: "Tier 2 — Scope by Architecture and Use Case"
+    left_header: "Tier 2 - Scope by Architecture and Use Case"
     left_sections:
       - bullets:
           - "Tool selection (Tier 1 if high discretion; use error counts if low discretion)"
@@ -49,12 +49,12 @@ slides:
           - "Guardrail quantitative results (bypass rate, false positive rate)"
           - "Benchmarking (what alternatives were considered)"
           - "Explainability process (documented SME review and flagging procedure)"
-    right_header: "Tier 3 — Defer to Monitoring"
+    right_header: "Tier 3 - Defer to Monitoring"
     right_sections:
       - bullets:
-          - "Sensitivity/robustness — implicit if test cases are sufficient"
-          - "LLM evaluator alignment — document limitations; elevates when evaluator scores drive production decisions"
-          - "Component-level attribution — root cause on errors"
+          - "Sensitivity/robustness - implicit if test cases are sufficient"
+          - "LLM evaluator alignment - document limitations; elevates when evaluator scores drive production decisions"
+          - "Component-level attribution - root cause on errors"
 
   - layout: "two_column"
     title: "Construction Review and Model Selection (§7.2/§7.3)"
@@ -100,4 +100,4 @@ slides:
         body: "\"Outcomes analysis can take many forms.\""
       - heading: "Testing ownership (§IV)"
         body: "\"Model testing is a core component of model development.\""
-    footer: "MRM Validation — AI Center of Excellence | April 2026"
+    footer: "MRM Validation - AI Center of Excellence | April 2026"
