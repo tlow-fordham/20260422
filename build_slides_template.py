@@ -1,402 +1,189 @@
 """
-Build slides from slides.yaml using U.S. Bank discussion template.
+Build slides from slides.yaml using U.S. Bank template.
 
-Uses Layout 13 (white background) for the title placeholder (PH 0).
-Content is placed as a textbox at the same position/size as the layout's
-content area (0.5", 2.1", 9.0" x 4.9") since OBJECT placeholders
-do not reliably accept text via python-pptx.
+Layout mapping:
+  - "title"      -> Layout 13 (Title and content 2): PH0=title, textbox for subtitle
+  - "single"     -> Layout 13 (Title and content 2): PH0=title, textbox for body
+  - "two_column" -> Layout 21 (Title two subtitle and two content 1):
+                     PH0=title, PH10=left subtitle, PH1=left content,
+                     PH11=right subtitle, PH2=right content
 
-Usage: python build_slides_template.py
-Dependencies: pip install python-pptx pyyaml
+Usage:
+  python build_slides.py [template.pptx] [slides.yaml] [output.pptx]
 """
 
-import yaml
 import sys
+import yaml
 from pptx import Presentation
-from pptx.util import Inches, Pt, Emu
+from pptx.util import Inches, Pt
+from pptx.enum.text import PP_ALIGN
 
+TEMPLATE_PATH = sys.argv[1] if len(sys.argv) > 1 else "U_S_Bank_standard_discussion_temp_cleaned.pptx"
+YAML_PATH = sys.argv[2] if len(sys.argv) > 2 else "slides.yaml"
+OUTPUT_PATH = sys.argv[3] if len(sys.argv) > 3 else "20260424_Agentic_AI_Validation_Best_Practices.pptx"
 
-TEMPLATE_PATH = "U_S_Bank_standard_discussion_temp_cleaned.pptx"
-YAML_PATH = "slides.yaml"
-OUTPUT_PATH = "20260423_Agentic_AI_Validation_Best_Practices.pptx"
+LAYOUT_SINGLE = 13   # Title and content 2
+LAYOUT_TWO_COL = 21  # Title two subtitle and two content 1
 
-LAYOUT = 13
-
-# Content area position/size — matches PH 10 on Layout 13
+# Content area for Layout 13 textbox (matches PH 10 position)
 CONTENT_LEFT = Inches(0.5)
 CONTENT_TOP = Inches(2.1)
 CONTENT_WIDTH = Inches(9.0)
 CONTENT_HEIGHT = Inches(4.9)
 
-
-def inspect_template(path):
-    prs = Presentation(path)
-    print(f"\nTemplate: {path}")
-    print(f"Slide size: {prs.slide_width / 914400:.1f}\" x "
-          f"{prs.slide_height / 914400:.1f}\"\n")
-    for i, layout in enumerate(prs.slide_layouts):
-        print(f"Layout {i}: \"{layout.name}\"")
-        for ph in layout.placeholders:
-            print(f"    Placeholder {ph.placeholder_format.idx}: "
-                  f"\"{ph.name}\" ({ph.placeholder_format.type}) "
-                  f"@ ({ph.left/914400:.1f}\", {ph.top/914400:.1f}\") "
-                  f"w={ph.width/914400:.1f}\" h={ph.height/914400:.1f}\"")
-        print()
+FONT_NAME = "Calibri"
 
 
-def add_content_box(slide, paragraphs):
-    """Add a textbox at the content area position and fill with paragraphs."""
-    if not paragraphs:
-        return
+def clean_text(text):
+    """Replace em-dashes and other problem characters with plain equivalents."""
+    if not text:
+        return ""
+    text = text.replace("\u2014", "-")   # em-dash
+    text = text.replace("\u2013", "-")   # en-dash
+    text = text.replace("\u2018", "'")   # left single quote
+    text = text.replace("\u2019", "'")   # right single quote
+    text = text.replace("\u201c", '"')   # left double quote
+    text = text.replace("\u201d", '"')   # right double quote
+    return text
 
-    txBox = slide.shapes.add_textbox(
-        CONTENT_LEFT, CONTENT_TOP, CONTENT_WIDTH, CONTENT_HEIGHT
-    )
+
+def add_para(tf, text, size=9, bold=False, italic=False, space_after=2, indent=0, first=False):
+    """Add a paragraph to a text frame."""
+    text = clean_text(text)
+    if first:
+        p = tf.paragraphs[0]
+    else:
+        p = tf.add_paragraph()
+    
+    run = p.add_run()
+    run.text = text
+    run.font.size = Pt(size)
+    run.font.bold = bold
+    run.font.italic = italic
+    run.font.name = FONT_NAME
+    p.space_after = Pt(space_after)
+    if indent:
+        p.level = indent
+    return p
+
+
+def render_sections(tf, sections, first_para=True):
+    """Render a list of section dicts (heading, body, bullets) into a text frame."""
+    is_first = first_para
+    for sec in sections:
+        if isinstance(sec, dict):
+            # Heading
+            heading = sec.get("heading", "")
+            if heading:
+                add_para(tf, heading, size=9, bold=True, space_after=1, first=is_first)
+                is_first = False
+            
+            # Body text
+            body = sec.get("body", "")
+            if body:
+                add_para(tf, body, size=8, space_after=3, first=is_first)
+                is_first = False
+            
+            # Bullets
+            for bullet in sec.get("bullets", []):
+                add_para(tf, bullet, size=8, space_after=1, indent=1, first=is_first)
+                is_first = False
+    return is_first
+
+
+def build_title_slide(prs, data):
+    """Title slide using Layout 13 with subtitle in a textbox."""
+    slide = prs.slides.add_slide(prs.slide_layouts[LAYOUT_SINGLE])
+    slide.placeholders[0].text = clean_text(data["title"])
+    
+    txBox = slide.shapes.add_textbox(CONTENT_LEFT, CONTENT_TOP, CONTENT_WIDTH, CONTENT_HEIGHT)
     tf = txBox.text_frame
     tf.word_wrap = True
-
-    for i, para in enumerate(paragraphs):
-        if i == 0:
-            p = tf.paragraphs[0]
-        else:
-            p = tf.add_paragraph()
-
-        p.text = para.get("text", "")
-        p.space_after = Pt(para.get("space_after", 2))
-
-        if "size" in para:
-            p.font.size = Pt(para["size"])
-        if "bold" in para:
-            p.font.bold = para["bold"]
-        if "italic" in para:
-            p.font.italic = para["italic"]
+    
+    subtitle = data.get("subtitle", "")
+    if subtitle:
+        add_para(tf, subtitle, size=12, italic=True, space_after=6, first=True)
+    
+    footer = data.get("footer", "")
+    if footer:
+        add_para(tf, "", size=6, space_after=2)
+        add_para(tf, footer, size=8, italic=True)
 
 
-def build_slide_1(prs, data):
-    slide = prs.slides.add_slide(prs.slide_layouts[LAYOUT])
-    slide.placeholders[0].text = data["title"]
-
-    body = []
-    body.append({"text": data["subtitle"], "italic": True, "size": 11,
-                 "space_after": 8})
-    for q in data["quotes"]:
-        body.append({"text": q["label"], "bold": True, "size": 10,
-                     "space_after": 0})
-        body.append({"text": q["text"], "size": 10, "space_after": 0})
-        body.append({"text": q["source"], "italic": True, "size": 9,
-                     "space_after": 6})
-    if data.get("footer"):
-        body.append({"text": "", "size": 6, "space_after": 4})
-        body.append({"text": data["footer"], "italic": True, "size": 9})
-
-    add_content_box(slide, body)
-
-
-def build_slide_2(prs, data):
-    slide = prs.slides.add_slide(prs.slide_layouts[LAYOUT])
-    slide.placeholders[0].text = data["title"]
-
-    body = []
-    body.append({"text": data["subtitle"], "italic": True, "size": 11,
-                 "space_after": 8})
-    for card in data["cards"]:
-        body.append({"text": card["heading"], "bold": True, "size": 10,
-                     "space_after": 0})
-        body.append({"text": card["section"], "italic": True, "size": 8,
-                     "space_after": 0})
-        body.append({"text": card["body"], "size": 9, "space_after": 6})
-    if data.get("callout"):
-        body.append({"text": "", "size": 6, "space_after": 2})
-        body.append({"text": "Core Principle", "bold": True, "size": 10,
-                     "space_after": 0})
-        body.append({"text": data["callout"], "italic": True, "size": 9})
-
-    add_content_box(slide, body)
-
-
-def build_slide_3(prs, data):
-    slide = prs.slides.add_slide(prs.slide_layouts[LAYOUT])
-    slide.placeholders[0].text = data["title"]
-
-    body = []
-    body.append({"text": data["subtitle"], "italic": True, "size": 11,
-                 "space_after": 6})
-    body.append({"text": data["left_header"], "bold": True, "size": 10,
-                 "space_after": 2})
-    for sec in data["left_sections"]:
-        body.append({"text": sec["heading"], "bold": True, "size": 9,
-                     "space_after": 0})
-        for bullet in sec["bullets"]:
-            body.append({"text": f"- {bullet}", "size": 8,
-                         "space_after": 1})
-        body.append({"text": "", "size": 4, "space_after": 2})
-    body.append({"text": data["right_header"], "bold": True, "size": 10,
-                 "space_after": 2})
-    for sec in data["right_sections"]:
-        body.append({"text": sec["heading"], "bold": True, "size": 9,
-                     "space_after": 0})
-        body.append({"text": sec["body"], "size": 8, "space_after": 4})
-    if data.get("footer"):
-        body.append({"text": "", "size": 4, "space_after": 2})
-        body.append({"text": data["footer"], "italic": True, "size": 8})
-
-    add_content_box(slide, body)
-
-
-def main():
-    if "--inspect" in sys.argv:
-        inspect_template(TEMPLATE_PATH)
-        return
-
-    with open(YAML_PATH, "r") as f:
-        content = yaml.safe_load(f)
-
-    prs = Presentation(TEMPLATE_PATH)
-
-    builders = {
-        "title": build_slide_1,
-        "cards": build_slide_2,
-        "two_column": build_slide_3,
-    }
-
-    for slide_data in content["slides"]:
-        layout_key = slide_data["layout"]
-        builder = builders.get(layout_key)
-        if builder:
-            builder(prs, slide_data)
-        else:
-            print(f"Warning: unknown layout '{layout_key}', skipping.")
-
-    prs.save(OUTPUT_PATH)
-    print(f"Saved: {OUTPUT_PATH}")
-
-
-if __name__ == "__main__":
-    main()
-
-
-
-
-
-"""
-Build slides from slides.yaml using U.S. Bank discussion template.
-
-Uses Layout 13 ("Title and content 2") — white background.
-Forces OBJECT placeholder (PH 10) into the slide XML since python-pptx
-does not automatically materialize it.
-
-Usage: python build_slides_template.py
-Inspect: python build_slides_template.py --inspect
-Dependencies: pip install python-pptx pyyaml
-"""
-
-import yaml
-import sys
-import copy
-from pptx import Presentation
-from pptx.util import Pt
-from pptx.oxml.ns import qn
-
-
-TEMPLATE_PATH = "U_S_Bank_standard_discussion_temp_cleaned.pptx"
-YAML_PATH = "slides.yaml"
-OUTPUT_PATH = "20260423_Agentic_AI_Validation_Best_Practices.pptx"
-
-LAYOUT = 13
-
-
-def inspect_template(path):
-    prs = Presentation(path)
-    print(f"\nTemplate: {path}")
-    print(f"Slide size: {prs.slide_width / 914400:.1f}\" x "
-          f"{prs.slide_height / 914400:.1f}\"\n")
-    for i, layout in enumerate(prs.slide_layouts):
-        print(f"Layout {i}: \"{layout.name}\"")
-        for ph in layout.placeholders:
-            print(f"    Placeholder {ph.placeholder_format.idx}: "
-                  f"\"{ph.name}\" ({ph.placeholder_format.type}) "
-                  f"@ ({ph.left/914400:.1f}\", {ph.top/914400:.1f}\") "
-                  f"w={ph.width/914400:.1f}\" h={ph.height/914400:.1f}\"")
-        print()
-
-
-def ensure_placeholder(slide, layout, ph_idx):
-    """
-    If a placeholder exists in the layout but not on the slide,
-    copy its XML element from the layout's spTree into the slide's spTree.
-    This forces OBJECT placeholders to materialize.
-    """
-    # Check if already on slide
-    if ph_idx in slide.placeholders:
-        return slide.placeholders[ph_idx]
-
-    # Find it in the layout XML
-    layout_spTree = layout.element.find(qn("p:cSld")).find(qn("p:spTree"))
-    for sp in layout_spTree.iter(qn("p:sp")):
-        nvSpPr = sp.find(qn("p:nvSpPr"))
-        if nvSpPr is None:
-            continue
-        nvPr = nvSpPr.find(qn("p:nvPr"))
-        if nvPr is None:
-            continue
-        phElem = nvPr.find(qn("p:ph"))
-        if phElem is not None:
-            idx = phElem.get("idx")
-            if idx is not None and int(idx) == ph_idx:
-                # Found it in layout — copy into slide
-                slide_spTree = slide.element.find(qn("p:cSld")).find(qn("p:spTree"))
-                new_sp = copy.deepcopy(sp)
-                slide_spTree.append(new_sp)
-                # Re-read placeholders
-                if ph_idx in slide.placeholders:
-                    return slide.placeholders[ph_idx]
-                else:
-                    print(f"  Warning: copied PH {ph_idx} XML but still not found")
-                    return None
-
-    print(f"  Warning: PH {ph_idx} not found in layout XML either")
-    return None
-
-
-def fill_content(slide, layout, ph_idx, paragraphs):
-    """Fill a placeholder, forcing it into existence if needed."""
-    if not paragraphs:
-        return
-
-    ph = ensure_placeholder(slide, layout, ph_idx)
-    if ph is None:
-        return
-
-    # Activate by setting .text
-    ph.text = paragraphs[0].get("text", "")
-
-    # Format first paragraph
-    tf = ph.text_frame
+def build_single_slide(prs, data):
+    """Single-column content slide using Layout 13 with a textbox."""
+    slide = prs.slides.add_slide(prs.slide_layouts[LAYOUT_SINGLE])
+    slide.placeholders[0].text = clean_text(data["title"])
+    
+    txBox = slide.shapes.add_textbox(CONTENT_LEFT, CONTENT_TOP, CONTENT_WIDTH, CONTENT_HEIGHT)
+    tf = txBox.text_frame
     tf.word_wrap = True
-    p = tf.paragraphs[0]
-    first = paragraphs[0]
-    p.space_after = Pt(first.get("space_after", 2))
-    if "size" in first:
-        p.font.size = Pt(first["size"])
-    if "bold" in first:
-        p.font.bold = first["bold"]
-    if "italic" in first:
-        p.font.italic = first["italic"]
-
-    # Add remaining
-    for para in paragraphs[1:]:
-        p = tf.add_paragraph()
-        p.text = para.get("text", "")
-        p.space_after = Pt(para.get("space_after", 2))
-        if "size" in para:
-            p.font.size = Pt(para["size"])
-        if "bold" in para:
-            p.font.bold = para["bold"]
-        if "italic" in para:
-            p.font.italic = para["italic"]
+    
+    sections = data.get("sections", [])
+    render_sections(tf, sections, first_para=True)
 
 
-def build_slide_1(prs, data):
-    layout = prs.slide_layouts[LAYOUT]
-    slide = prs.slides.add_slide(layout)
-    slide.placeholders[0].text = data["title"]
-
-    body = []
-    body.append({"text": data["subtitle"], "italic": True, "size": 11,
-                 "space_after": 8})
-    for q in data["quotes"]:
-        body.append({"text": q["label"], "bold": True, "size": 10,
-                     "space_after": 0})
-        body.append({"text": q["text"], "size": 10, "space_after": 0})
-        body.append({"text": q["source"], "italic": True, "size": 9,
-                     "space_after": 6})
-    if data.get("footer"):
-        body.append({"text": "", "size": 6, "space_after": 4})
-        body.append({"text": data["footer"], "italic": True, "size": 9})
-
-    fill_content(slide, layout, 10, body)
-
-
-def build_slide_2(prs, data):
-    layout = prs.slide_layouts[LAYOUT]
-    slide = prs.slides.add_slide(layout)
-    slide.placeholders[0].text = data["title"]
-
-    body = []
-    body.append({"text": data["subtitle"], "italic": True, "size": 11,
-                 "space_after": 8})
-    for card in data["cards"]:
-        body.append({"text": card["heading"], "bold": True, "size": 10,
-                     "space_after": 0})
-        body.append({"text": card["section"], "italic": True, "size": 8,
-                     "space_after": 0})
-        body.append({"text": card["body"], "size": 9, "space_after": 6})
-    if data.get("callout"):
-        body.append({"text": "", "size": 6, "space_after": 2})
-        body.append({"text": "Core Principle", "bold": True, "size": 10,
-                     "space_after": 0})
-        body.append({"text": data["callout"], "italic": True, "size": 9})
-
-    fill_content(slide, layout, 10, body)
+def build_two_column_slide(prs, data):
+    """Two-column slide using Layout 21 with native placeholders."""
+    slide = prs.slides.add_slide(prs.slide_layouts[LAYOUT_TWO_COL])
+    
+    # Title
+    slide.placeholders[0].text = clean_text(data["title"])
+    
+    # Left subtitle (PH 10)
+    left_header = data.get("left_header", "")
+    if left_header:
+        slide.placeholders[10].text = clean_text(left_header)
+    
+    # Right subtitle (PH 11)
+    right_header = data.get("right_header", "")
+    if right_header:
+        slide.placeholders[11].text = clean_text(right_header)
+    
+    # Left content (PH 1)
+    left_tf = slide.placeholders[1].text_frame
+    left_tf.clear()
+    left_sections = data.get("left_sections", [])
+    render_sections(left_tf, left_sections, first_para=True)
+    
+    # Right content (PH 2)
+    right_tf = slide.placeholders[2].text_frame
+    right_tf.clear()
+    right_sections = data.get("right_sections", [])
+    render_sections(right_tf, right_sections, first_para=True)
+    
+    # Footer as a separate small textbox at bottom
+    footer = data.get("footer", "")
+    if footer:
+        ftBox = slide.shapes.add_textbox(
+            Inches(0.5), Inches(6.7), Inches(9.0), Inches(0.3)
+        )
+        ft_tf = ftBox.text_frame
+        ft_tf.word_wrap = True
+        add_para(ft_tf, footer, size=7, italic=True, first=True)
 
 
-def build_slide_3(prs, data):
-    layout = prs.slide_layouts[LAYOUT]
-    slide = prs.slides.add_slide(layout)
-    slide.placeholders[0].text = data["title"]
+# --- Main ---
 
-    body = []
-    body.append({"text": data["subtitle"], "italic": True, "size": 11,
-                 "space_after": 6})
-    body.append({"text": data["left_header"], "bold": True, "size": 10,
-                 "space_after": 2})
-    for sec in data["left_sections"]:
-        body.append({"text": sec["heading"], "bold": True, "size": 9,
-                     "space_after": 0})
-        for bullet in sec["bullets"]:
-            body.append({"text": f"- {bullet}", "size": 8,
-                         "space_after": 1})
-        body.append({"text": "", "size": 4, "space_after": 2})
-    body.append({"text": data["right_header"], "bold": True, "size": 10,
-                 "space_after": 2})
-    for sec in data["right_sections"]:
-        body.append({"text": sec["heading"], "bold": True, "size": 9,
-                     "space_after": 0})
-        body.append({"text": sec["body"], "size": 8, "space_after": 4})
-    if data.get("footer"):
-        body.append({"text": "", "size": 4, "space_after": 2})
-        body.append({"text": data["footer"], "italic": True, "size": 8})
+with open(YAML_PATH, "r") as f:
+    content = yaml.safe_load(f)
 
-    fill_content(slide, layout, 10, body)
+prs = Presentation(TEMPLATE_PATH)
 
+builders = {
+    "title": build_title_slide,
+    "single": build_single_slide,
+    "two_column": build_two_column_slide,
+}
 
-def main():
-    if "--inspect" in sys.argv:
-        inspect_template(TEMPLATE_PATH)
-        return
+for slide_data in content["slides"]:
+    layout_key = slide_data["layout"]
+    builder = builders.get(layout_key)
+    if builder:
+        builder(prs, slide_data)
+    else:
+        print(f"Warning: unknown layout '{layout_key}', skipping.")
 
-    with open(YAML_PATH, "r") as f:
-        content = yaml.safe_load(f)
-
-    prs = Presentation(TEMPLATE_PATH)
-
-    builders = {
-        "title": build_slide_1,
-        "cards": build_slide_2,
-        "two_column": build_slide_3,
-    }
-
-    for slide_data in content["slides"]:
-        layout_key = slide_data["layout"]
-        builder = builders.get(layout_key)
-        if builder:
-            builder(prs, slide_data)
-        else:
-            print(f"Warning: unknown layout '{layout_key}', skipping.")
-
-    prs.save(OUTPUT_PATH)
-    print(f"Saved: {OUTPUT_PATH}")
-
-
-if __name__ == "__main__":
-    main()
+prs.save(OUTPUT_PATH)
+print(f"Saved: {OUTPUT_PATH}")
+print(f"Slides: {len(prs.slides)}")
