@@ -22,16 +22,16 @@ TEMPLATE_PATH = sys.argv[1] if len(sys.argv) > 1 else "U_S_Bank_standard_discuss
 YAML_PATH = sys.argv[2] if len(sys.argv) > 2 else "slides.yaml"
 OUTPUT_PATH = sys.argv[3] if len(sys.argv) > 3 else "20260424_Agentic_AI_Validation_Best_Practices.pptx"
 
-LAYOUT_SINGLE = 13   # Title and content 2
-LAYOUT_TWO_COL = 21  # Title two subtitle and two content 1
+LAYOUT_SINGLE = 14   # Title and content (latest number for right background)
+LAYOUT_TWO_COL = 23  # Title two subtitle and two content 3 (latest)
 
-# Content area for Layout 13 textbox (matches PH 10 position)
+# Content area for Layout 14 textbox (matches PH 10 position)
 CONTENT_LEFT = Inches(0.5)
 CONTENT_TOP = Inches(2.1)
 CONTENT_WIDTH = Inches(9.0)
 CONTENT_HEIGHT = Inches(4.9)
 
-FONT_NAME = "Calibri"
+FONT_NAME = "US Bank Circular"
 
 
 def clean_text(text):
@@ -47,7 +47,7 @@ def clean_text(text):
     return text
 
 
-def add_para(tf, text, size=9, bold=False, italic=False, space_after=2, indent=0, first=False):
+def add_para(tf, text, size=10, bold=False, italic=False, space_after=2, indent=0, first=False, use_template_font=False):
     """Add a paragraph to a text frame."""
     text = clean_text(text)
     if first:
@@ -57,36 +57,37 @@ def add_para(tf, text, size=9, bold=False, italic=False, space_after=2, indent=0
     
     run = p.add_run()
     run.text = text
-    run.font.size = Pt(size)
-    run.font.bold = bold
-    run.font.italic = italic
-    run.font.name = FONT_NAME
+    if not use_template_font:
+        run.font.size = Pt(size)
+        run.font.name = FONT_NAME
+    run.font.bold = bold if bold else None
+    run.font.italic = italic if italic else None
     p.space_after = Pt(space_after)
     if indent:
         p.level = indent
     return p
 
 
-def render_sections(tf, sections, first_para=True):
+def render_sections(tf, sections, first_para=True, heading_size=11, body_size=10, use_template_font=False):
     """Render a list of section dicts (heading, body, bullets) into a text frame."""
     is_first = first_para
     for sec in sections:
         if isinstance(sec, dict):
-            # Heading
             heading = sec.get("heading", "")
             if heading:
-                add_para(tf, heading, size=9, bold=True, space_after=1, first=is_first)
+                add_para(tf, heading, size=heading_size, bold=True, space_after=2,
+                         first=is_first, use_template_font=use_template_font)
                 is_first = False
             
-            # Body text
             body = sec.get("body", "")
             if body:
-                add_para(tf, body, size=8, space_after=3, first=is_first)
+                add_para(tf, body, size=body_size, space_after=4,
+                         first=is_first, use_template_font=use_template_font)
                 is_first = False
             
-            # Bullets
             for bullet in sec.get("bullets", []):
-                add_para(tf, bullet, size=8, space_after=1, indent=1, first=is_first)
+                add_para(tf, bullet, size=body_size, space_after=2, indent=1,
+                         first=is_first, use_template_font=use_template_font)
                 is_first = False
     return is_first
 
@@ -124,43 +125,36 @@ def build_single_slide(prs, data):
 
 
 def build_two_column_slide(prs, data):
-    """Two-column slide using Layout 21 with native placeholders."""
+    """Two-column slide using Layout 23 with native placeholders.
+    Layout 23 has: PH0=title, PH10=left subtitle, PH1=left content,
+                   PH11=right subtitle, PH2=right content.
+    Native placeholders inherit US Bank Circular font from template."""
     slide = prs.slides.add_slide(prs.slide_layouts[LAYOUT_TWO_COL])
     
-    # Title
+    # Title (PH 0) - inherits template font (US Bank Circular 28)
     slide.placeholders[0].text = clean_text(data["title"])
     
-    # Left subtitle (PH 10)
+    # Left subtitle (PH 10) - inherits template font (US Bank Circular 20 bold)
     left_header = data.get("left_header", "")
     if left_header:
         slide.placeholders[10].text = clean_text(left_header)
     
-    # Right subtitle (PH 11)
+    # Right subtitle (PH 11) - inherits template font (US Bank Circular 20 bold)
     right_header = data.get("right_header", "")
     if right_header:
         slide.placeholders[11].text = clean_text(right_header)
     
-    # Left content (PH 1)
+    # Left content (PH 1) - use template font
     left_tf = slide.placeholders[1].text_frame
     left_tf.clear()
     left_sections = data.get("left_sections", [])
-    render_sections(left_tf, left_sections, first_para=True)
+    render_sections(left_tf, left_sections, first_para=True, use_template_font=True)
     
-    # Right content (PH 2)
+    # Right content (PH 2) - use template font
     right_tf = slide.placeholders[2].text_frame
     right_tf.clear()
     right_sections = data.get("right_sections", [])
-    render_sections(right_tf, right_sections, first_para=True)
-    
-    # Footer as a separate small textbox at bottom
-    footer = data.get("footer", "")
-    if footer:
-        ftBox = slide.shapes.add_textbox(
-            Inches(0.5), Inches(6.7), Inches(9.0), Inches(0.3)
-        )
-        ft_tf = ftBox.text_frame
-        ft_tf.word_wrap = True
-        add_para(ft_tf, footer, size=7, italic=True, first=True)
+    render_sections(right_tf, right_sections, first_para=True, use_template_font=True)
 
 
 # --- Main ---
