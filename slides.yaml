@@ -1,51 +1,552 @@
-### Ticket 11 — DeepEval Framework Mechanics and Evaluation Gap Analysis for Model 7409
+# Model 7409 — IV Observations
 
-**Estimate:** 3 hours
-**Due Date:** 4/30/2026
-
-**Focus:** We need to understand how the DeepEval framework actually works under the hood so Validation can assess what the 7409 test configuration is and is not evaluating. The test input JSONs define scenarios and expected outcomes, but we need clarity on the simulation mechanics, termination behavior, and what metrics are available versus what 7409 is actually using.
-
-**What to do:**
-
-- Go to deepeval.com/docs and read the ConversationSimulator documentation and the metrics introduction. Understand how the simulator runs a multi-turn conversation from a ConversationalGolden (scenario, user_description, expected_outcome), how it decides when to stop, and what happens when the model refuses a prompt (as in our guardrail tests).
-- Look at the DeepEval test input JSON files from the model owner. Map what we are actually evaluating (the SessionStateMetric, field_capture block) against what DeepEval offers out of the box. Identify what standard metrics exist in the framework that we are not using, and note which gaps matter most for a customer-facing IVR model.
-- Address three specific questions in your writeup: (1) If the model correctly refuses a guardrail attack, does the simulator keep retrying forever or does it stop? (2) How does DeepEval know if the model said something toxic or biased, given our current configuration? (3) Can DeepEval evaluate whether the model should NOT have called a tool (e.g., should not submit a case on a guardrail scenario)?
-
-**Deliverable:** A 1-2 page note covering: how the simulator works (one paragraph), how termination and adversarial scenarios are handled, what we are evaluating versus what we are not, and a short recommendation on what the model owner should consider adding for IV-stage testing.
+**Document Status:** Working reference document — carried forward from PA review for IV
+**Date:** April 28, 2026
+**Primary Validator:** Jordan Low
+**Secondary Validator:** Jinjun Tong
+**Model IDs:** PRISM-96567 | BCIQ-65960962
 
 ---
 
-### Ticket 12 — Organize DeepEval Test Scenarios by Validation Category and Identify Coverage Gaps
+This document is organized into two parts. **Part 1** preserves supporting detail and evidence that underpins positions taken in the PA report but is not reproduced there. **Part 2** collects observations and open questions identified during the PA review period that are deferred for depth work during Initial Validation (IV). IV work begins from the PA report and adds depth; resolved pilot-period items are not re-examined here.
 
-**Estimate:** 2.5 hours
-**Due Date:** 4/30/2026
+**Usage — IV Observations is an internal working document.** It is not a deliverable and is not shared with the model owner, MRG, or any external audience. It exists to (a) retain analytical evidence and reconstructions that support PA conclusions without bloating the PA report, and (b) hold open items and hypotheses that Jordan will work up during IV. Because it is internal, language here does not conform to formal validation voice and may include working notes, specific filenames, JIRA IDs, and log details.
 
-**Focus:** The PA draft organizes SME testing results by validation category (happy path by dispute type, fuzzy matching, transfer/escalation, guardrail/adversarial, etc.). The DeepEval test scenarios need the same treatment so we can see at a glance what is covered and what is not.
-
-**What to do:**
-
-- Pull the full list of DeepEval test input JSONs from the model owner's test configuration.
-- Categorize each scenario using the same validation categories used in the PA draft (e.g., happy path incorrect amount, happy path duplicate charge, fuzzy merchant name, fuzzy date, fuzzy amount, transfer/escalation, guardrail malicious, guardrail tool disclosure, guardrail off-topic, etc.).
-- For each category, note how many DeepEval scenarios exist versus how many SME scenarios covered the same category.
-- Identify gaps: categories that had SME coverage but have no DeepEval scenario, and categories that have no coverage at all. Flag any new scenarios in DeepEval that were not part of the original 52 SME cases.
-- Note any recommendations for scenarios the model owner should add to improve the test suite for IV-stage regression and adversarial testing. Think about what paths remain untested (e.g., merchant contact "N" and "U" paths, boundary amounts near $300, ambiguous dispute descriptions).
-
-**Deliverable:** A table with columns: Validation Category, DeepEval Scenario Count, SME Scenario Count, Coverage Notes. Follow the table with a short list of recommended additions.
+**The PA report is a standalone document.** Nothing in the PA report should cross-reference IV Observations. If a PA paragraph needs to signal that further work is deferred to IV, use a bracketed `[TBD: ...]` comment in place of such a cross-reference. Cross-references of the form "see IV Observations" or "captured in IV Observations" do not belong in the PA and should be removed on sight.
 
 ---
 
-### Ticket 13 — Review DeepEval Test Outputs for Model Misses
+# Part 1 — Evidence Supporting the PA
 
-**Estimate:** 3 hours
-**Due Date:** 5/1/2026
+This part captures analytical detail and reconstructions produced during PA review that underpin specific PA report conclusions but are not reproduced in the PA itself for brevity.
 
-**Focus:** The DeepEval test outputs contain the full simulated conversations and evaluation results. We need someone to read through them and flag any cases where the model did something wrong, whether or not the DeepEval metrics caught it.
+---
 
-**What to do:**
+# DeepEval Automated Testing Assessment
 
-- Pull the DeepEval test output files (the completed conversation logs with evaluation results) from the model owner.
-- Read through each conversation. For every scenario, check: Did the model collect the right information? Did it call the right tools? Did it reach the correct outcome (submission, transfer, or refusal)? Did it say anything incorrect, inappropriate, or off-script?
-- Flag any model misses. A miss is anything where the model's behavior deviates from what a human reviewer would consider correct, even if the DeepEval metric scored it as passing. Examples: wrong field value captured, unnecessary escalation, failure to ask a required question, incorrect dispute classification, hallucinated policy language, or a guardrail scenario where the model partially complied with a malicious request before refusing.
-- You do not need to document every turn. Only note the turns where something went wrong, and describe where in the conversation it happened (e.g., "during merchant contact collection," "at the point of case submission," "after the first refusal attempt").
+## Framework Description
 
-**Deliverable:** A table with columns: Scenario Name, Where in Conversation, What Happened, What Should Have Happened, DeepEval Score (Pass/Fail). Follow the table with a short summary of any patterns across scenarios.
+The Model Developer implemented DeepEval, an automated black-box testing framework that employs LLM-as-a-Tester simulations. DeepEval creates synthetic customers with scripted scenarios and has an LLM (Nova Pro 1) play the customer side of the conversation against the live AI agent. Validation reviewed 10 DeepEval test transcripts as part of the preliminary assessment.
+
+## Limitations Identified
+
+Validation identified several limitations that prevented the framework from producing PA-quality evidence:
+
+- Tests are text-based and bypass the speech layer entirely (Nova Sonic/Lex STT). Real speech variability is not tested.
+- Synthetic customers respond with fully formed grammatical sentences in 2-3 second intervals, which does not represent real caller behavior.
+- The SessionStateMetric checks whether certain session state keys exist and match expected values. It does not compare Casper field values against what the customer said and cannot evaluate field accuracy.
+- Multiple "happy path" tests failed because the FDI_SEARCH_TOOL could not find the expected transactions, suggesting test data misconfiguration rather than model failures.
+- The evaluation metric itself produced unexplained results (e.g., flagging "dispute_type is incorrect" when session state showed the correct value), reducing confidence in the automated evaluation framework.
+
+Based on Validation's recommendation to focus on SME evaluation as the primary approach, DeepEval was set aside for PA-level assessment. The Model Developer accepted this recommendation at the March 18, 2026 meeting.
+
+## Early Engagement Position on DeepEval Scope
+
+Validation's Early Engagement position was that DeepEval is appropriate for volume and regression but cannot replace human-in-the-loop SME evaluation for PA-level performance claims, for the reasons detailed under Limitations Identified. Validation recommended SME testing be scheduled early, which produced the V9 SME baseline. This sequencing is what allowed DeepEval regression to serve as a reasonable V9-to-V10 check at PA: the V9 SME baseline establishes the human-validated performance floor, and the V10 changes (Disclaimer moved upstream to deterministic IVR, Eligibility pulled into a dedicated tool, prompt tightened around the same stage structure) are bounded and risk-reducing relative to V9. Any future regression against a V10+ change that does not meet the same "bounded, risk-reducing" characterization should trigger a new SME-in-the-loop cycle rather than relying on DeepEval alone.
+
+## Recommendations for IV and Pilot Use
+
+DeepEval remains the only available mechanism for high-volume automated testing and should be incorporated into the pilot monitoring plan once its data misconfiguration and metric reliability issues are resolved. Specifically, the model owner should use DeepEval (or an equivalent automated framework) during the pilot for:
+
+- **Continuous regression testing:** Running the existing 56 SME-designed scenarios automatically after any prompt, tool code, or guardrail change to detect regressions without requiring the SME to re-execute all calls manually.
+- **Adversarial and red-team testing at scale:** SME testing covered 8 guardrail/adversarial scenarios. Automated synthetic testing can generate hundreds of adversarial scenarios (prompt injection, PII probing, off-topic injection, boundary-condition inputs) at volumes not feasible for human testers.
+- **Edge-case exploration:** Systematic testing of the untested paths identified in the PA review (merchant contact N and U paths, contactMethod values other than Phone, boundary amounts near $300, ambiguous dispute descriptions that straddle classification boundaries).
+
+The model owner should address the following before relying on DeepEval for pilot monitoring: fix the test data configuration so happy-path scenarios succeed, replace the SessionStateMetric with a Casper-field-level comparison metric, and add speech-layer testing (either via Nova Sonic integration or by validating text-based results against a representative sample of voice-based calls).
+
+## DeepEval Synthetic Testing Data
+
+Prior to SME testing, the Model Developer implemented DeepEval using Nova Pro 1 as the synthetic customer LLM. The 10 DeepEval transcripts reviewed by Validation provided a preliminary baseline for expected conversation length (~795 words per full conversation, approximately 20 conversational turns for a complete submission).
+
+## DeepEval Bypass Mode in Submit Tool
+
+The submit tool has a DeepEval bypass mode (`is_deepeval` flag, read from session state) that returns a hardcoded dummy case reference (`F-D-260219800147`) instead of calling the Casper API. This is appropriate for testing. The DeepEval flag will not be part of production code.
+
+---
+
+# SME Testing Timeline Reconstruction
+
+The PA report characterizes SME testing as having begun in late February against early versions of the model, with failures remediated through prompt and tool code updates culminating in the March 28 V9 system prompt. This section preserves the underlying reconstruction supporting that characterization. The JIRA exports did not consistently tag test runs with the model version in effect at the time; Validation reconstructed the timeline from JIRA test-execution dates, documented bug fix dates, and the prompt release calendar.
+
+| Test Case | First Test Date | Version at Test | Failure | Remediation | Retest Date | Retest Outcome |
+|-----------|-----------------|-----------------|---------|-------------|-------------|----------------|
+| DDIAI-39 (Incorrect Amount, end-to-end) | 02/24 | Pre-March-11 build | "What to receive from merchant" field not included | Field added to Casper schema; prompt coverage expanded | Not documented | Passed under V9 |
+| DDIAI-41 (Duplicate Charge, end-to-end) | 02/24 | Pre-March-11 build | $0 dispute amount for duplicate (DDIAI-122) | Prompt updated with $0 escalation logic; tool code sets amountDisputed = full transaction Amount for PE#DC | 03/17 | Passed |
+| DDIAI-72 (Incorrect Amount, fuzzy match) | 03/11 | March 11 initial prompt | Dispute amount mapping error ($43.00 captured instead of $0.98); Bugs DDIAI-74, DDIAI-81 | Mapping fix in tool code | 03/24 | Passed |
+| DDIAI-87 (Incorrect Amount, all known) | 03/19 | March 17 interim prompt | Service/Merchandise mapping bug (DDIAI-127) | Casper API team fix on 03/20 | 03/23 | Passed |
+| DDIAI-91 (Multi-claim, PE#IA + PE#DC) | 03/24 | March 17 interim prompt | Blank purchase description and merchant response fields; mapping issues (DDIAI-125) | Mapping fix on 03/24; API-side fix resolved hard-coded merchandise values | 03/24 | Passed (2 clean submissions) |
+| DDIAI-119 (Credit-as-debit, OOS) | 03/21 | March 17 interim prompt | Not classified as OOS; attempted to process as duplicate then incorrect amount (DDIAI-133) | Prompt fix added credit processing to enumerated escalation triggers; fix incorporated into V9 | 03/23 | Passed (correctly escalated) |
+| DDIAI-120 (Paid by other means, OOS) | 03/21 | March 17 interim prompt | Misclassified as duplicate charge; full interview processed before submission failed (DDIAI-134, DDIAI-135) | Prompt fix added escalation trigger; fix incorporated into V9 | 03/23 | Passed (correctly escalated) |
+
+The table supports the PA report narrative that (a) no test failure occurred against V9, (b) every failure had a documented remediation path that was applied and retested, and (c) V9 is the correct attribution for the 100% post-fix Successful Casper Submission Rate. The V10 revisions (April 15) added the standalone Eligibility tool and removed the Disclaimer stage from the AI agent; these changes did not alter the V9 SME test results, and V10 regression testing (33 DeepEval cases per BL) was completed separately before the V10 deployment to UAT.
+
+---
+
+# System Prompt Change History
+
+The system prompt evolved through four iterations during the PA review period: March 11 (initial, with Search and Submit custom tools), March 17 (interim), March 28 (Version 9, the pilot-candidate version that incorporated all early-engagement remediations with Search and Submit custom tools), and April 15 (Version 10, adding the Eligibility custom tool and restructuring the stage flow). All early-revision observations were addressed before pilot; the PA report documents resolution inline. The April 15 Version 10 walkthrough below documents the structural changes (Disclaimer stage removed, Transaction Eligibility Check stage added) supporting the V10 assessment in the PA report. IV follow-ups arising from V10 are captured in Part 2.
+
+### Early-Engagement Detail — March 11 Baseline to April 15 V10 Material Changes
+
+The PA report summarizes the 12 material changes between the March 11 baseline and the April 15 V10 in compressed form. The following preserves the underlying SME testing evidence, JIRA story IDs, Item references, and prompt-section anchors that supported the validation assessment of each change. This detail is retained here for IV reference and audit traceability.
+
+1. **Disclaimer stage removed.** The March 11 prompt included a Disclaimer stage requiring the LLM to read a disclaimer and obtain explicit acknowledgment. SME testing revealed barge-in vulnerabilities (DDIAI-131) and inconsistent handling of non-standard utterances at consent points (DDIAI-132). The model owner removed the disclaimer from the AI agent entirely and moved it to a traditional IVR yes/no prompt upstream, eliminating the LLM-dependent consent interpretation risk. (Validation-driven, Items 78, 79.)
+2. **Transaction eligibility check added.** A new stage and tool (`usb_fdi_eligibility_tool`) verify the transaction is eligible for dispute immediately after the customer confirms the transaction, before the interview continues. Previously, eligibility was checked only at submission. (BL and Casper API team driven.)
+3. **Issue identification substantially rewritten.** The March 11 prompt had a brief list of responsibilities for dispute type classification. The April 15 version includes a structured three-step decision tree (Is it incorrect amount? Duplicate? Neither → escalate), an explicit list of non-qualifying dispute types with instructions to escalate without follow-up questions, trigger phrases for immediate escalation (e.g., "service wasn't provided," "merchant backed out"), and clarifications for legitimate incorrect amount scenarios (receipt vs. charge discrepancy, discount not applied, quantity errors). Credit processing escalation triggers are narrowed to true credit card processing issues at the processor level. (Partially validation-driven per Item 80; partially BL-initiated.)
+4. **Escalation triggers expanded and restructured.** The March 11 prompt relied on a single implicit trigger (out-of-context counter reaching 4). The April 15 version defines 11 explicit escalation triggers, including two new triggers for account information changes and account security concerns. The disclaimer refusal and communication difficulties triggers were removed (disclaimer is upstream; communication handling revised). All triggers now reference a unified escalation pattern defined once in `<core_behavior>` and invoked consistently throughout the prompt. (Validation-driven, Items 77-81.)
+5. **Mandatory escalation tool invocation.** SME testing revealed cases where the AI sent a transfer message but did not invoke the Escalate tool, effectively terminating the call (DDIAI-140). The April 15 version includes a unified escalation pattern requiring: inform customer → invoke Escalate tool immediately → stop all processing. (Validation-driven, Item 81.)
+6. **PII handling protocol added.** The March 11 prompt had no structured PII protocol. SME testing showed the AI asked up to 7 times before escalating on PII requests (DDIAI-57) and made 15 attempts with no escalation on model disclosure requests (DDIAI-59). The April 15 version includes a dedicated `<pii_handling>` section with a 2-attempt escalation threshold. (Validation-driven, DDIAI-57 and DDIAI-59.)
+7. **Merchant contact and Casper field accuracy.** The March 11 prompt did not specify Casper field names for merchant contact fields. SME testing revealed `nameOfContacted` was blank in completed cases (DDIAI-66) and $0.00 dispute amounts were accepted (DDIAI-41). The April 15 version explicitly names the `noSuccessContactReason` field, clarifies the N/U path routing, and adds $0 expected amount escalation logic. (Validation-driven, Items 25, 26.)
+8. **Merchandise/Service collection and incorrect amount coverage.** The March 11 prompt omitted the Merchandise vs. Service question and had minimal guidance for the incorrect amount dispute path. Root cause investigation (DDIAI-87/DDIAI-127) traced a submission error to the missing collection step. The April 15 version adds an explicit M/S question, the expected amount question, the no-show/pre-payment question for PE#IA disputes, and the $0 escalation rule. (Validation-driven, Items 9, 34.)
+9. **Disclosure text rewritten.** The verbatim regulatory disclosure read to customers was rewritten from a formal legal tone to a softer, empathetic tone. A new instruction for receipt upload via online or mobile banking was added. (BL-initiated.)
+10. **Counter tracking and out-of-context handling.** The out-of-context threshold was reduced from 4 to 3 attempts. Counters now reset at the start of the conversation rather than at disclaimer acknowledgment. Three separate counters (OOC, PII, data validation) replace the single counter. (Validation-driven and BL-initiated.)
+11. **Transaction identification refinements.** The purchase reason question changed from "always ask" to "ask only once." A year-prompting instruction was added for dates without a year (six-month lookback window). Escalation messages consolidated into the unified escalation pattern. The instruction to not repeat the merchant's name back to the customer was added. Separately, the Confirmation stage was materially simplified: the March 11 version directed the AI to give the customer a final opportunity to change their mind, listen for hesitation, not rush the stage, and route back to negotiation on amount changes, while the April 15 version directs the AI to proceed to disclosure unless the customer explicitly asks to change something and to offer adjustment only if the customer spontaneously mentions concern. This shifts the Confirmation stage from proactive adjustment prompting to passive acceptance unless customer-initiated. (Validation-driven and BL-initiated.)
+12. **Empty user input handling formalized.** The March 11 prompt handled empty customer input with a single instruction to apologize once and then invoke the Complete tool to end the conversation. The April 15 version formalizes a three-attempt protocol (two apology-and-retry attempts followed by escalation to a human agent via the unified escalation pattern) and adds empty user input as an enumerated escalation trigger (Trigger 9). The change routes non-responsive callers to a human agent rather than silently terminating the session. (BL-initiated.)
+
+### Updated Prompt (April 15, 2026) — Version 10
+
+The model developer walked Validation through a further revised system prompt on April 15, 2026 (Version 10 per the Connect orchestration prompt configuration: `usb_fdi_orchestration_prompt_unlimitedAI`, Published, Version 10). This revision introduced two structural changes to the conversation flow and one new tool:
+
+**Change 1: Disclaimer stage removed from AI agent scope (validation-driven).**
+
+The disclaimer is now handled as a traditional IVR prompt (yes/no button press) upstream of the AI agent. The caller presses a button to acknowledge before reaching the AI agent; callers who decline are routed to a human agent without entering the AI flow.
+
+This change is validation-driven. MRM flagged two risks during the PA review:
+
+- Item 78 (DDIAI-131): A caller who said "No" to the disclaimer barged over the escalation prompt and continued the dispute flow. The LLM did not reliably enforce the consent boundary.
+- Item 79 (DDIAI-132): Non-standard utterances at the disclaimer and disclosure ("uh huh," "ok," "thanks," "NAHH") were accepted or rejected inconsistently by LLM interpretation. MRM's position was that consent to a regulatory disclaimer should have defined acceptance criteria, not rely on LLM interpretation.
+
+By moving the disclaimer to a traditional IVR yes/no prompt, the model owner eliminates the LLM-dependent consent interpretation risk entirely. The AI agent no longer participates in the consent flow at all. This is a positive design change that removes a model risk concern.
+
+**Change 2: Transaction Eligibility Check stage added (BL and API team driven).**
+
+A new Stage 3 ("Transaction Eligibility Check") was inserted between Transaction Identification and Merchant Contact. A corresponding new custom Lambda tool (`usb_fdi_eligibility_tool__eligible_transactions`) calls the Casper eligibility API to verify the transaction is eligible for dispute before the interview continues. If eligible, the conversation proceeds to Merchant Contact. If ineligible (e.g., recurring transaction, or other Casper-side rejection), the AI informs the customer and escalates to a human agent with the reason.
+
+Previously, this eligibility check was embedded inside the submit tool code (`fdi_submit_case_tool.py`). This meant the eligibility API was only called at the very end of the conversation during claim submission. If the transaction was ineligible, the customer had already completed the full interview (merchant contact, confirmation, disclosure) before being told the dispute could not proceed. The Casper API team identified this as a poor customer experience and requested the eligibility check be moved earlier.
+
+The eligibility API call logic was removed from the submit tool code. The submit tool now handles only the final claim submission.
+
+**Change 3: Year prompting logic retained.**
+
+The agent still explicitly asks the customer for the year if omitted from the transaction date. The model developer confirmed this is intentional: the search window covers six months of transactions, so a customer saying "January 26th" in early 2026 could mean January 2025 or January 2026, and defaulting to the current year would be unreliable for border cases.
+
+**Updated stage structure:**
+
+| Stage | Old (March 28, V9) | New (April 15, V10) |
+|-------|---------------|---------------------|
+| IVR (pre-agent) | — | Disclaimer (traditional IVR yes/no) |
+| Stage 1 | Disclaimer | Issue Identification |
+| Stage 2 | Issue Identification | Transaction Identification |
+| Stage 3 | Transaction Identification | Transaction Eligibility Check (NEW) |
+| Stage 4 | Merchant Contact | Merchant Contact |
+| Stage 5 | Confirmation | Confirmation |
+| Stage 6 | Disclosure and Submission | Disclosure and Dispute Submission |
+
+**Updated tool inventory (confirmed via Connect AI Agent screenshot):**
+
+| Tool | Type | Status |
+|------|------|--------|
+| Complete | Native QIC | Unchanged |
+| Escalate | Native QIC | Unchanged |
+| usb_fdi_txn_search__search_transactions | Custom Lambda | Unchanged |
+| usb_fdi_eligibility_tool__eligible_transactions | Custom Lambda | NEW |
+| usb_fdi_submit_case_tool__submit_claim_interview | Custom Lambda | Modified (eligibility logic removed) |
+
+**Artifacts received and outstanding (Item 100):**
+
+- [x] Updated system prompt text (Version 10, ELIGIBILITY_PROMPT_CHANGES_LATEST.yaml) — received 4/15
+- [x] Eligibility tool Lambda code — received 4/15
+- [x] Eligibility tool JSON schema — received 4/15
+- [x] Updated submit tool code (eligibility logic removed) — received 4/15
+- [x] JIRA story for the eligibility tool change — created, one contact ID in JIRA comments
+- [ ] Additional contact/session IDs from BL UAT testing — Ravi to add to JIRA (target 4/22)
+- [ ] QIC transcript logs showing eligibility tool invocation — Ravi to add to JIRA (target 4/22)
+- [ ] DeepEval regression test results for V10 (33 test cases) — Purnima to attach to JIRA (target 4/22)
+- [ ] Updated conversation workflow diagram reflecting V10 — Baloo (target 4/22)
+- [ ] Updated per-turn flow diagram reflecting fifth tool — Baloo (target 4/22)
+
+**V10 frozen:** Baloo confirmed at the 4/15 meeting that V10 is the frozen version and no further changes are expected. MRM reset the PA review start date to April 15, 2026, with a 4-week review window targeting PA sign-off by May 13, 2026, contingent on no further material changes.
+
+**DeepEval regression for V10:** BL confirmed that DeepEval regression testing (33 test cases) is run before any code is promoted to UAT, followed by IT functional testing and UAT testing by Linda. All three steps were completed for the V10 change. MRM will review the DeepEval results once attached and determine whether additional targeted SME tests on the eligibility stage are needed.
+
+---
+
+# Provenance and Traceability — Full Detail
+
+The PA report covers the logging architecture in summary form (three log sources today plus the V10 eligibility tool log, ContactId-keyed across all sources, sufficient for pilot oversight). The full per-log content description and the end-to-end submission walkthrough used during PA review are preserved here for IV depth review.
+
+## Three-Log Walkthrough — Single PE#IA Submission (case reference D-260320000682)
+
+The model owner provided three log types for each test case, demonstrated via an end-to-end incorrect amount submission (case reference D-260320000682). Together, these logs form a complete traceability chain from customer speech through to Casper submission:
+
+1. **Conversation transcript (Conversation Analytics JSON, streamed to S3):** Turn-by-turn record containing rawInputTranscript (the STT output from Nova Sonic, i.e. what the system heard the customer say) and messages.0.content (the LLM's response to the customer). Each turn is timestamped.
+
+2. **FDI_SEARCH_TOOL Lambda CloudWatch log:** Records the search query parameters the LLM constructed (Merchant: "Sass Food", Date: 20251226, Amount: 8, TypeOfDispute: Incorrect Amount), the fuzzy matching execution (date range 12/23-12/29, amount +/-10%, merchant fuzzy match 0 hits due to blank MerchantName in test data), the DynamoDB results (3 eligible transactions returned), session state merge, and the final response sent back to the LLM. This log exposes the intermediate step between what the customer said and what the LLM had to work with for transaction selection.
+
+3. **FDI_SUBMIT_TOOL Lambda CloudWatch log:** Records the complete Casper API payload submitted, including all field values as transformed by the tool code: natureOfDispute: PE#IA, amountDisputed: 2.0 ($8 charged minus $6 expected), hasAttemptedToResolve: Y, contactDate: 20260105, contactPerson: the model owner, contactMethod: Phone, merchantResponse: "Merchant agreed and said the bank should take care of it", noShowOrPartialPrePayment: Y. The log also records the API response (HTTP 200, case reference D-260320000682) and timing (6.43 seconds for the API call).
+
+All three logs are keyed by ContactId, enabling end-to-end trace reconstruction for any given call. A reviewer can follow a single customer interaction from the STT transcription of their first utterance, through the LLM's classification and data collection decisions, into the tool call parameters and database results, and finally to the exact Casper API payload and response.
+
+**Validation Commentary:**
+
+The three-log architecture provides sufficient provenance and explainability for PA purposes. For any disputed or anomalous submission, it is possible to reconstruct which customer utterances produced which Casper field values and identify where in the pipeline an error occurred (STT, LLM reasoning, tool code, or API). With the addition of the eligibility tool in V10, a fourth Lambda CloudWatch log is now generated for the eligibility check step; the logging architecture is expected to extend to four log sources for V10 conversations, though MRM has not yet reviewed an eligibility tool log sample. CloudWatch logging is active with 6-month retention. A QIC trace log reviewed by Validation contains the full LLM invocation context (system prompt, expanded tool schemas for all five tools, complete conversation history, and tool call results), demonstrating that LLM reasoning-level traceability is available. Open items for IV: confirm this logging is retained in production with the same fidelity, and determine whether there is an automated mechanism to pull the full trace for a given ContactId or whether manual log retrieval across four sources (S3, CloudWatch search tool, CloudWatch eligibility tool, CloudWatch submit tool) is required.
+
+### Provenance Verification
+
+Validation performed a detailed end-to-end walkthrough of a multi-claim session (one PE#IA and one PE#DC submission on the same call), reconstructing the full trace across all three log sources. Key findings include correct PE#IA amountDisputed calculation ($10.19 - $5.19 = $5.00), correct PE#DC full-amount assignment ($11.87), successful recurring transaction eligibility check, and correct regulatory disclosure re-read for the second claim.
+
+---
+
+# Casper API Integration — Full Detail
+
+The PA report covers the Casper API behavior, the contactDate format gap, the submit tool error handling, and the inference-type risk in summary form. The full original prose, including the search-tool date-validation contrast and the precise retry mechanics, is preserved here for IV depth review.
+
+The Casper API (IVR Dispute Claim swagger.yaml, v1.0.3, last updated February 27, 2026) accepts a structured JSON payload containing account information, transaction details, and interview responses. The field-level mapping from tool schema inputs through tool code processing to Casper API fields is documented in the Tool Architecture section and Appendix A.
+
+### API Error Handling and Data Persistence
+
+The Casper API validates payload structure but not semantics. A well-formatted but factually incorrect payload (e.g., a year inference error producing "20241126" instead of "20251126," or a subtly wrong amount) would be accepted and create an incorrect dispute record. Validation also notes that the submit tool performs no format validation on the contactDate field: if the LLM generates a natural language date string (e.g., "Nov 26th 2025" or "January fifth") instead of the required yyyyMMdd format, the submit tool passes it through to Casper as-is via `map_field`. By contrast, the search tool validates date format (`len==8` and `isdigit()`) and rejects malformed dates with a ValueError. [TBD — confirm with the Model Owner whether the Casper API rejects malformed contactDate values or accepts them silently. If the latter, this is an additional silent-error vector that should be addressed by adding date format validation to the submit tool code.]
+
+Validation's review of the Lambda submit tool code confirms that error handling is implemented: non-200 API responses return an escalation message to the LLM, already-disputed transactions (IC-2031 error code) are caught and escalated, recurring transactions are detected for duplicate charges, and missing transaction IDs trigger escalation. The system prompt instructs the AI to apologize and transfer to a human agent on tool failure; the customer is transferred after 2 retries (3 total attempts: 1 initial + 2 retries).
+
+A store-and-forward mechanism exists: when the Casper API fails, collected dispute information is written to a separate DynamoDB table so the data is not lost. The customer hears a technical error message and is transferred to a human agent. A SEV2 incident is raised automatically and the standard production incident response process applies.
+
+
+**Validation Commentary:**
+
+The model performs multiple inference types beyond simple data extraction, including dispute classification, transaction matching, temporal inference (date parsing and year inference), entity normalization (merchant name matching), and format transformation (natural language to rigid schema). Each of these introduces a distinct failure mode. The silent acceptance of well-formatted but incorrect payloads means that errors may not be caught at submission time and could propagate into downstream dispute processing. Validation recommends the model owner implement post-submission reconciliation checks and monitoring to detect incorrect claim data during the pilot.
+
+---
+
+# Multi-Claim End-to-End Reconstruction (DDIAI-91)
+
+During PA, Validation independently reconstructed the full timeline of DDIAI-91 (a multi-claim happy-path: one PE#IA followed by one PE#DC, both against the same merchant, on a single ContactId) from the conversation transcript, Search tool CloudWatch log, and Submit tool CloudWatch log. The reconstruction confirmed correct behavior on several dimensions under PA conditions: multi-claim session continuity, dispute type switching (PE#IA to PE#DC), fuzzy match disambiguation with multiple same-merchant candidates, PE#IA arithmetic (amountDisputed = Amount minus expectedAmount), and the PE#DC eligibility/full-amount path. This reconstruction supports the PA report's statements on multi-claim behavior and fuzzy-match disambiguation.
+
+---
+
+# Tool Schema Field Mapping Reference
+
+This section retains the complete field-level schema mapping for the three custom Lambda tools (Search, Eligibility, Submit). The PA report covers the schema descriptions, processing categories, and validation findings in summary form; the full per-field reference is preserved here for IV depth review and audit traceability.
+
+**Search tool schema (search_transactions):** The schema describes a transaction search accepting five fields. All schema fields are typed as string. The LLM must populate merchant, date, and amount from natural language customer speech before invoking the tool. The following table maps each schema field through the tool code's processing logic to its downstream effect. All schema fields are collected during Stage 3 (Transaction Identification), except typeOfDispute which is classified during Stage 2 (Issue Identification).
+
+The search tool queries DynamoDB using two scan patterns, both filtered by the caller's ContactId to ringfence results to the active session:
+
+1. **Pattern 1 (date + amount):** Scans for transactions matching the customer-stated date (±3 calendar days) and amount (±10% of the stated value). This is the primary search path.
+2. **Pattern 2 (merchant + date):** Scans for transactions matching the customer-stated date (±3 calendar days) and merchant name. This is the secondary search path.
+
+Results from both patterns are combined and deduplicated by TransactionId. The tool then applies two matching methods to identify the best candidate:
+
+- **Character similarity (SequenceMatcher):** Python's `difflib.SequenceMatcher` computes a character-level similarity ratio between two lowercased strings, returning a value between 0.0 (no match) and 1.0 (identical). The tool requires a ratio above 0.6 (60%) for merchant name matching. This is a lexical comparison — it measures how many characters two strings share in the same order, not whether they refer to the same entity. For example, "Chevron" vs. "Chevronn" would score high, but "gas station" vs. "Chevron" would score low.
+- **Exact match / range comparison:** Used for date (calendar day difference ≤ 3), amount (absolute difference ≤ 10% of target), and all post-query guard checks (TransactionStatus, DisputeEligible, TransactionCode, $300 threshold).
+
+| # | Schema Field | Required | DynamoDB Query Usage | Fuzzy Match / Processing | Returns to LLM? |
+|---|-------------|----------|---------------------|--------------------------|-----------------|
+| 1 | merchant | Yes | Pattern 2: scans by ContactId + date range, then filters by merchant name. Also applied post-query to Pattern 1 results. | Character similarity (SequenceMatcher) > 60% on lowercased strings. If empty, merchant match is bypassed (defaults True), falling back to date + amount matching only. | No (filtering only) |
+| 2 | date | Yes | Both patterns: ±3 calendar day range filter (target_date ± 3 days via `timedelta`). DynamoDB `Attr('Date').between(start, end)`. | ±3 calendar day tolerance (not business days). Validated: must be 8 digits in YYYYMMDD format; rejected with ValueError otherwise. Parsed via `strptime` for range calculation. | No (filtering only) |
+| 3 | amount | Yes | Pattern 1: scans where Amount BETWEEN amount×0.9 and amount×1.1. | ±10% tolerance relative to the customer-stated amount (not the bank-recorded amount). String in schema; converted to float then Decimal for DynamoDB filter. The threshold check (`>= 300`) is applied separately to the matched transaction's actual bank-recorded amount, so the tolerance cannot create a bypass of the $300 pilot limit. | No (filtering only) |
+| 4 | typeOfDispute | **No (optional)** | Not used in DynamoDB query. Used post-query for PE#DC duplicate policy: counts transactions sharing same Amount+Date+MerchantName; escalates if >2. | Exact match against constant "Duplicate charge" to decide whether to run the check. | No (policy check only) |
+| 5 | sessionId | Yes | Used to read QConnect session state → extract contactId → DynamoDB partition filter `Attr('ContactId').eq(contact_id)`. | N/A | No (routing only) |
+
+The tool returns a filtered, deduplicated transaction list to the LLM. Each transaction record contains four fields: DisputedTransactionId (renamed from DynamoDB TransactionId), Amount (Decimal converted to float), Date (passthrough), and MerchantName (passthrough). A fifth field, TokenizedCardNumber, is stored in QConnect session state for the submit tool but is stripped from the response before it reaches the LLM (line 207), providing a code-level PII protection layer independent of Bedrock Guardrails. The tool also writes the transaction list, dispute_type, and tool execution status to session state.
+
+Before returning results, the tool applies several guard checks that can short-circuit the flow with an escalation message: if the best-matching transaction has TransactionStatus of PENDING (wait 1-3 days), if its Amount is >= 300 ($300 pilot threshold), or for PE#DC disputes if >2 transactions share the same Amount/Date/MerchantName combination (duplicate transaction policy). Transactions are also filtered by DisputeEligible (must be True) and TransactionCode (must be in allowlist ['1238', '8373']).
+
+Notably, typeOfDispute is not in the required array, meaning the LLM can invoke the search without specifying the dispute type. If omitted, the PE#DC duplicate transaction policy check may not fire correctly. The system prompt instructs the LLM to classify the dispute type before searching, providing a functional safeguard, but the schema does not enforce this dependency.
+
+**Eligibility tool schema (eligible_transactions):** The schema describes an eligibility check accepting three fields, all typed as string and all required. The LLM invokes this tool in Stage 3 (Transaction Eligibility Check) after the customer confirms the matched transaction, before the merchant contact interview begins. The schema is shown below.
+
+| # | Schema Field | Required | Source | Usage |
+|---|--------------|----------|--------|-------|
+| 1 | disputedTransactionId | Yes | Search tool → LLM → Eligibility tool (round-trip) | Primary key for locating the matched transaction in session state; passed to Casper as transactionDetails.refNumber. |
+| 2 | sessionId | Yes | System (QIC platform) | Used to read/write QConnect session state and locate the matched transaction record. Not sent to Casper. |
+| 3 | expectedAmount | Yes | LLM (PE#IA only) | Passed to Casper as interview.amountDisputed after computation: for PE#IA, amountDisputed = transaction Amount − expectedAmount; for PE#DC, expectedAmount is ignored and the full transaction Amount is used. |
+
+The schema mirrors the three-field subset of the Submit tool schema needed to perform a standalone eligibility check. All three fields are required, so the LLM cannot invoke the tool with missing inputs. The downstream eligibility API returns one of four documented reason codes (IVR-415 recurring transaction, IC-2031 already disputed, IC-2034 needs further review, IC-3001 no matching transaction) mapped to specific customer-facing escalation messages; any other non-200 response or exception falls back to a generic technical-error escalation.
+
+**Submit tool schema (submit_claim_interview):** The schema describes a claim submission accepting 11 fields. All schema fields are typed as string; the tool code handles all type conversions (string-to-float for amounts, string-to-enum for contact methods). The following table maps each schema field to its corresponding Casper API field, the conversation stage where the data is collected, and the data processing performed by the tool code. Fields are grouped by required/optional status in the schema.
+
+**Required schema fields (7):**
+
+| # | Submit Tool Schema Field | Conversation Stage | Casper API Field | Data Processing | Source |
+|---|--------------------------|-------------------|------------------|-----------------|--------|
+| 1 | typeOfDispute | Stage 2: Issue Identification | interview.natureOfDispute | Deterministic map: "Incorrect Amount" → "PE#IA", "Duplicate charge" → "PE#DC". Unrecognized values pass through with no validation. | LLM classifies from customer speech |
+| 2 | expectedAmount | Stage 3: Transaction Identification (PE#IA: "how much did you expect to pay?") | interview.amountDisputed | PE#IA: tool code computes Amount − expectedAmount (line 237); string→float via map_amount. PE#DC: expectedAmount is **ignored**; amountDisputed = full transaction Amount (line 233). | LLM (expectedAmount); Transaction DB (Amount) |
+| 3 | merchantContactStatus | Stage 4: Merchant Contact ("Did you contact the merchant? Y/N/U") | interview.hasAttemptedToResolve | map_bool_to_attempt: normalizes yes/y/true → Y, no/n/false → N, u/unable → U. Also accepts booleans. | LLM extracts from conversation |
+| 4 | purchaseReason | Stage 3: Transaction Identification (PE#DC: "What was the reason for this purchase?") | interview.purchaseDescription (PE#DC only) | Passthrough via map_field. Only included in Casper payload for PE#DC. For PE#IA the schema still requires it but the tool ignores it. | LLM extracts from conversation |
+| 5 | noShowOrPartialPrePayment | Stage 3: Transaction Identification (PE#IA: "Is this a no-show or pre-payment partial transaction?") | interview.noShowOrPartialPrepayment (PE#IA only) | map_bool_to_attempt: same Y/N normalization. Only included for non-PE#DC disputes. | LLM extracts from conversation |
+| 6 | disputedTransactionId | Stage 3: Transaction Identification (round-trip: search tool returns it, LLM echoes it back) | transactionDetails.refNumber (always) + interview.origTxRefNumber (PE#DC only) | Passthrough via map_field. Also used by lambda_handler to look up the matched transaction from session state. | Search tool → LLM → Submit tool |
+| 7 | sessionId | N/A (injected by QIC platform) | Not sent to Casper | Used to read/write QConnect session state. Never reaches Casper API. | System (QIC platform) |
+
+**Optional schema fields (5):**
+
+| # | Submit Tool Schema Field | Conversation Stage | Casper API Field | Data Processing | Source |
+|---|--------------------------|-------------------|------------------|-----------------|--------|
+| 8 | merchantContactName | Stage 4: Merchant Contact (Y path: "name of contact") | merchantContactDetails.nameOfContacted | Passthrough via map_field. Nested as contactPerson in tool code (line 220). | LLM extracts from conversation |
+| 9 | merchantContactMethod | Stage 4: Merchant Contact (Y path: "channel — phone, postal, email, in-person, online, other") | merchantContactDetails.contactMethod (+ OtherContactMethod if "Other") | map_contact_method: postal → Mail, in-person → Face-to-Face, online → Web Support/App, phone → Phone, email → Email, other → Other. Unrecognized values pass through. If "Other", also populates OtherContactMethod from undocumented key "otherContactMethod". | LLM extracts from conversation |
+| 10 | merchantContactDate | Stage 4: Merchant Contact (Y path: "date") | merchantContactDetails.contactDate | Passthrough via map_field. No date parsing or reformatting — LLM must provide yyyyMMdd. | LLM extracts from conversation |
+| 11 | merchantResponse | Stage 4: Merchant Contact (Y path: "response") | merchantContactDetails.merchantResponse | Passthrough via map_field. Free-text LLM summary of what the merchant said. | LLM summarizes from conversation |
+| 12 | noSuccessContactReason | Stage 4: Merchant Contact (N path: "Why didn't you try to contact the merchant?" / U path: "Why were you unable to reach them?") | **Overloaded — one-to-two fan-out:** interview.unableToContactReason (U path) OR interview.explainNoAttemptToResolve (N path) | Tool code reads the single LLM field and routes to two different Casper fields based on merchantContactStatus: if U → unableToContactReason (line 250); if N → explainNoAttemptToResolve (line 254). Passthrough via map_field after routing. The LLM does not know which Casper field it is populating. The system prompt names this field for both N and U paths. Neither path was tested by SME. | LLM extracts from conversation |
+
+
+---
+
+# Tool Code Method Reference
+
+This section documents the key Python methods in the Lambda tool implementations reviewed during PA. The Eligibility tool (new in V10) is not included here; its method inventory can be added during IV code review.
+
+## fdi_submit_case_tool.py (Submit Tool)
+
+The submit tool transforms LLM-collected dispute details into a structured Casper API payload and submits the claim.
+
+| Method | Signature | Purpose | Key Logic |
+|--------|-----------|---------|-----------|
+| `lambda_handler` | `(event, context) -> Dict` | AWS Lambda entry point. Orchestrates the full submission flow. | Reads session state from QConnect via `extract_session_data`. Matches the disputed transaction by `disputedTransactionId` against the session's transaction list. Merges session data, LLM event data, and matched transaction into a single payload dict. Reads `is_deepeval` flag from session state. Calls `submit_dispute_claim` with the merged payload. Returns escalation message if no matching transaction found or session read fails. |
+| `submit_dispute_claim` | `(event, assistant_id, session_id) -> Dict` | Submits the dispute to the Casper API and manages session state. | Calls `build_api_payload` to assemble the request. In DeepEval/skip mode (`is_deepeval=True` or `API_SUBMIT=false`), returns a hardcoded dummy case reference (`F-D-260219800147`) without calling the API. Otherwise, sends POST to `CASPER_API_URL` with mutual TLS (mTLS) authentication (cert/key/PEM from Secrets Manager). A UUID CorrelationId is added to the request headers for end-to-end traceability, and `TempClaimID` is included in the payload when present in session state. Handles: non-200 responses (generic escalation), missing `pyID` in response (ValueError). Updates session state with `tool_execution_status`, `agenticAIDisclosure`, `agenticAIConfirm`, and `case_reference` on success. |
+| `build_api_payload` | `(details) -> Dict` | Assembles the top-level Casper API request structure. | Builds three sections: `accountInfo` (tokenAccountNumber, cardMemberName, cardholderID from session state), `transactionDetails` (refNumber, merchantName, transactionDate, tranAmount from matched transaction), and `interview` (from `build_interview_payload`). Sets `IVRCallReference` to `contactId` and `callWrapped` to `True`. |
+| `build_interview_payload` | `(details) -> Dict` | Maps LLM-collected conversational fields to the Casper interview schema. | Maps `typeOfDispute` to `natureOfDispute` codes: Incorrect Amount to PE#IA, Duplicate charge to PE#DC. Calculates `amountDisputed`: for PE#DC, uses full transaction `Amount` (line 233); for PE#IA, computes `Amount - expectedAmount` (line 237). Conditionally populates: `unableToContactReason` only when `hasAttemptedToResolve=U`; `explainNoAttemptToResolve` only when `hasAttemptedToResolve=N`; `noShowOrPartialPrepayment` only for non-PE#DC disputes; `origTxRefNumber` and `origTxDate` only for PE#DC disputes. In V10, `purchaseDescription` is set unconditionally rather than PE#DC-only. |
+| `map_contact_method` | `(value) -> str` | Deterministic mapping from prompt-defined contact method values to Casper API enum values. | Maps: postal to Mail, in-person to Face-to-Face, online to Web Support/App, phone to Phone, email to Email, other to Other. Normalizes input to lowercase before lookup. Returns original value if no match found. |
+| `map_bool_to_attempt` | `(value) -> str` | Converts merchant contact status to Y/N/U for `hasAttemptedToResolve`. | Handles bool (True to Y, False to N), string (yes/y/true to Y, u/unable to U, else N). |
+| `map_amount` | `(details, field_name) -> float` | Safely extracts and converts amount fields to float. | Returns `0.0` default on None or conversion failure. |
+| `map_field` | `(details, field_name) -> str` | Safely extracts string fields with list handling. | If value is a list, extracts first element. Returns empty string default on None. |
+| `extract_session_data` | `(session_response) -> Tuple[Dict, list]` | Parses QConnect session response into session data dict and transactions list. | Iterates `data` array, extracts `stringValue` for each key. Parses `transactions` key as JSON list. Returns tuple of (session_data, transactions_list). |
+
+**Supporting modules included in the file:** `Token.py` (OAuth token retrieval via Secrets Manager and client credentials grant) and `SessionState.py` (QConnect session state read/write/update with transaction list append and deduplication).
+
+## fdi_txn_search_tool.py (Search Tool)
+
+The search tool queries the customer's recent transactions from DynamoDB and applies fuzzy matching to identify the disputed transaction.
+
+| Method | Signature | Purpose | Key Logic |
+|--------|-----------|---------|-----------|
+| `lambda_handler` | `(event, context) -> Dict` | AWS Lambda entry point. Orchestrates the transaction search flow. | Extracts merchant, date, amount, and `typeOfDispute` from LLM event. Reads session state for `contactId`, `customerName`, `legalParticipantID`, and `deepeval` flag. Calls `query_transactions_table` for DynamoDB results. Applies three-dimensional fuzzy matching (date +/-3 days, amount +/-10%, merchant 60% similarity) to find the best match. Checks: if matching transaction is PENDING, returns "wait 1-3 days" message with transfer. If matching transaction `Amount >= 300`, returns $300 threshold message with transfer. For PE#DC disputes, checks if >2 transactions share the same amount/date/merchant combination and returns transfer message if so. Deduplicates results via `remove_duplicate_trans`. Strips `TokenizedCardNumber` from output before returning to LLM. Updates QConnect session with transaction list and tool execution status. |
+| `query_transactions_table` | `(merchant, contact_id, date, amount) -> list` | Executes DynamoDB queries using two scan patterns and deduplicates results. | Pattern 1: `query_by_date_and_amount` (if date and amount provided). Pattern 2: `query_by_merchant_and_date` (if merchant and date provided). Results from both patterns are combined and deduplicated by `TransactionId`. |
+| `query_by_date_and_amount` | `(table, contact_id, date, amount) -> Dict` | DynamoDB scan filtered by date range, amount range, and ContactId. | Computes +/-3 day date range and +/-10% amount tolerance. Uses `Attr` filter expressions: `Date.between(start, end)`, `Amount.between(low, high)`, `ContactId.eq(contact_id)`. |
+| `query_by_merchant_and_date` | `(table, contact_id, merchant, date) -> Dict` | DynamoDB scan with fuzzy merchant name matching. | First pass: scans by `ContactId` and date range (+/-3 days). Second pass: applies `SequenceMatcher` on merchant name with 60% similarity threshold. Returns only fuzzy-matched items. |
+| `remove_duplicate_trans` | `(transactions, key_subset) -> list` | Generic deduplication by specified key subset. | Creates hashable tuple from sorted key-value pairs for the specified subset. Preserves first occurrence. Used for both `TransactionId` dedup (after DynamoDB query) and `Amount/Date/MerchantName` dedup (before returning to LLM). |
+| `remove_duplicate_amount_merchant` | `(transactions) -> list` | Deduplication by Amount + Date + MerchantName composite key. | Creates (Amount, Date, MerchantName) tuple as composite key. Preserves first occurrence. |
+
+**Supporting modules included in the file:** `SessionState.py` (same QConnect session state management as submit tool, with verbose logging).
+
+---
+
+# Bedrock Guardrails Configuration Details
+
+This section documents the detailed Bedrock Guardrails configuration from the Terraform IaC (tagged UAT environment, guardrail name "UAT_Bedrock_Guardrails"). UAT-to-production parity applies.
+
+## Content Policy
+
+| Category | Input Strength | Output Strength |
+|----------|---------------|-----------------|
+| Sexual | HIGH | HIGH |
+| Violence | HIGH | HIGH |
+| Misconduct | HIGH | HIGH |
+| Hate | MEDIUM | HIGH |
+| Insults | MEDIUM | HIGH |
+| Prompt Attack | HIGH | NONE |
+
+The MEDIUM input threshold on Hate and Insults is a design choice for a dispute call center context, as frustrated customers may use language that triggers higher sensitivity thresholds, and false positives would disrupt legitimate calls. The HIGH output threshold ensures the AI itself does not produce hateful or insulting language. Prompt Attack filtering is HIGH on input but NONE on output; see the Validation Observations in the Guardrail Testing section for the implications.
+
+## Sensitive Information Policy (PII/PCI)
+
+Two tiers of protection are configured:
+
+**ANONYMIZE (data is masked but call continues):** Email, Phone, Name, Username, Driver ID
+
+**BLOCK (call is interrupted):** Credit/debit card numbers, Card Verification Value (CVV), PIN, Social Security Number (SSN), bank account/routing numbers, ITIN, US passport number, passwords, AWS access/secret keys, international equivalents (IBAN, SWIFT code, CA health/social insurance numbers, UK NHS/NI/taxpayer numbers)
+
+## Custom Regex Patterns
+
+| Pattern Name | Regex | Target |
+|-------------|-------|--------|
+| Account Number | `XXXXXX1234` format | U.S. Bank account number format |
+| US SSN | `XXX-XX-XXXX` format (3 digits, hyphen, 2 digits, hyphen, 4 digits) | Social Security Numbers |
+| Japan My Number | 12 consecutive digits | Japanese national ID |
+| Polish PESEL | 11 consecutive digits | Polish national ID |
+| Ireland PPSN | 7 digits followed by 1-2 letters | Irish Personal Public Service Number |
+| UK NI Number | Standard UK National Insurance format | UK National Insurance Number |
+| UK Passport | Standard UK passport number format | UK passport |
+| Poland Passport | Standard Polish passport number format | Polish passport |
+
+## Profanity Filter
+
+A managed profanity word list is active, with a custom word entry for "HATE."
+
+
+
+---
+
+# Engagement Timeline
+
+| Date | Event | Key Outcome |
+|------|-------|-------------|
+| Aug 2025 | Original PA Request Form submitted | Initial submission received by MRM |
+| Feb 4, 2026 | Meeting with model owner team | Discussed PA requirements and validation expectations |
+| Feb 5, 2026 | PA Request Form returned with comments | MRM sent marked-up form with detailed feedback |
+| Feb 17, 2026 | Live demo for MRM | Two test calls; zero successful end-to-end completions; action items assigned |
+| Feb 25, 2026 | Comprehensive documentation requirements email | PA deadline March 23; IV deadline end of May; performance testing requirements outlined |
+| Mar 9, 2026 | SME evaluation spreadsheet sent to model owner | 6 test cases reviewed; yellow columns for SME completion due March 16 |
+| Mar 11, 2026 | Model owner response | 12 dispute types confirmed; SME testing definition requested; 9 of 12 questions unanswered |
+| Mar 12, 2026 | Check-in meeting | SME testing definition clarified; outstanding questions reviewed |
+| Mar 17, 2026 | Interim system prompt and custom tool code received | Updated fdi_system_prompt.yaml (interim revision), Lambda Python code, tool schemas, and system prompt Q&A posted to Confluence. The custom tool code delivered on this date was carried forward into V9 unchanged. |
+| Mar 18, 2026 | Weekly early engagement call | DeepEval dropped; ~58-60 SME cases by March 25; guardrails confirmed real-time (PII/PCI/profanity); prompt injection coverage unconfirmed; EMA revision agreed; PA form deadline extended to March 25 |
+| Mar 20, 2026 | Working session with model owner | Architecture confirmed: Haiku 4.5 + Nova Sonic 2 only; Bedrock Guardrails Terraform IaC received; PA Request Form live edits across all 6 questions; new scope limiter identified (duplicate transaction policy); Sonnet 4.5 / Real-Time Alarms status pending |
+| Mar 25, 2026 | PA documentation deadline (extended) | PA Request Form, 56 SME test cases, and revised EMA received |
+| Mar 25, 2026 | Early Engagement checkpoint meeting | Success metrics confirmed (90%/10%). Architecture update: Real-Time Alarms uses Nova Pro V1, not Sonnet 4.5. Sonnet 4.5 is DeepEval only. EMA revised and submitted live. The SME confirmed no outstanding defects. Store-and-forward mechanism confirmed. Bedrock Guardrails UAT=prod confirmed. Test environment down 3/26-~4/2 for quarterly refresh. |
+| Mar 28, 2026 | V9 system prompt finalized | Materially revised system prompt incorporating all early-engagement remediations (credit-processing escalation triggers, $0 escalation logic, M/S collection, PII handling protocol, 11 enumerated escalation triggers, empty-input three-attempt protocol). Custom tool code (Search and Submit) unchanged from March 17 delivery. V9 is the version against which all SME retests passed. |
+| Apr 1, 2026 | Weekly check-in meeting | Architecture substantially resolved: per-turn reasoning confirmed as stage-gated deterministic workflow with non-deterministic LLM reasoning within stages (not ReAct). Four tools confirmed (two custom Lambda tools plus two native QIC tools: Complete and Escalate). LLM-suggests / QIC-executes execution model confirmed. Testing metrics: case-level measurement confirmed pending BL sign-off. Trace files: CloudWatch logging confirmed with 6-month retention; full LLM input/output context capture still unconfirmed. Volume figures (23%, <1%) confirmed as historical. Material change definition discussed but unresolved. |
+| Apr 9, 2026 | Model owner email response (Baloo) | Five items resolved: (1) Production hyperparameters confirmed for Haiku 4.5: temperature=0.0, max_tokens=2048 (explicit overrides of platform defaults). (2) NAME anonymization confirmed not to interfere with cardMemberName (CTR-sourced, outside guardrail path); nameOfContacted path still unconfirmed. (3) Native QIC tool prompt instructions received for Complete and Escalate tools. (4) Nova Pro version reconfirmed as V1 (no V2 exists). (5) Test environment confirmed back online as of April 2. |
+| Apr 9, 2026 | Updated architecture document v09 (Baloo) | Production model inventory confirmed: Claude Haiku 4.5 (conversational), Nova Sonic 2.0 (STT/TTS, confirmed active), Nova Pro V1 (monitoring only). Dev/test only: Claude Sonnet 4.5 (DeepEval evaluation), Nova Pro 1.0 (DeepEval orchestration). Policy language and regulatory disclosures are embedded in the system prompt. Resolves Item 50. |
+| Apr 15, 2026 | PA review kickoff meeting (V10) | V10 system prompt, Eligibility tool code and schema, and updated Submit tool code delivered. V10 frozen confirmed by model owner. PA review clock started with 4-week review window targeting PA sign-off by May 13, 2026. |
+| Apr 21-22, 2026 | Model owner offsite (MRM attended both days) | Day 1: live UAT calls demonstrating V10 end-to-end flow, technical metrics walkthrough (Amazon Connect Common Utility dashboard), safety/compliance metrics (Baloo), business analytics plan and pilot success metric targets (Ekene), CX team CSAT approach, and deployment/rollout methodology. Day 2: deeper technical sessions including context window management, tool-call tracing, and operational monitoring. Validation observed live call behavior, collected pilot metrics coverage data, and identified open items (rollback authority, false-positive review, merged trace files). |
+| Apr 24, 2026 | Post-offsite confirmation email (John Lorence) | Model owner confirmed: (1) change control framework (significant vs. non-significant changes), (2) pilot success metric targets (Bot Successful Interview Completion Rate >=90%, Intake Error Rate <=10%, Call Containment Rate and CSAT monitored with no current goals), and (3) phased rollout plan (time-boxed activation, war room, downstream lifecycle completion before throttle increase, incremental expansion). |
+
+---
+
+# Part 2 — Observations Deferred to IV Narrative
+
+This part collects observations and open questions identified during PA review that are deferred for IV-stage depth work. These are not PA concerns; they are starting points for IV analysis.
+
+---
+
+# V10 Follow-Up Items
+
+**IV follow-up — Empty user input vs. background noise scope.** The V10 prompt introduces a three-attempt protocol on `<EMPTY_USER_INPUT>` that escalates to a human agent. This marker is emitted by the NovaSonic speech layer when it detects silence (no audio to transcribe). It does not cover the case where NovaSonic transcribes persistent background noise into coherent-looking but meaningless text (e.g., ambient conversation, typing picked up as speech per DDIAI-65). In that scenario, the LLM receives regular input, does not see `<EMPTY_USER_INPUT>`, and may loop asking the customer to repeat until one of the other counters (OOC, data validation) happens to trip or the customer hangs up. The call does not terminate automatically. For IV, confirm with the BL: (a) does NovaSonic have an STT confidence threshold below which `<EMPTY_USER_INPUT>` is emitted instead of a low-confidence transcription, and (b) was noisy-environment / low-confidence STT behavior included in the V10 UAT test scope. This is an STT/infrastructure-layer question rather than a prompt concern, but the customer-experience risk (indefinite loop in a noisy environment) warrants explicit IV confirmation.
+
+**IV follow-up — Eligibility tool minor observations.** Validation has no major concerns with the eligibility tool code for pilot use (see PA report, Tool Architecture). The following minor items are captured for IV-stage cleanup and do not affect PA:
+
+- **Legacy function name.** The primary eligibility check function is named `isRecurring()`, inherited from when the recurrence check was embedded in the submit tool. The function now handles all four documented error codes plus technical failure, not just recurrence. Rename is cosmetic but improves log and maintenance clarity.
+- **DISPUTE_TOOL_NAME typo.** The module-level constant `DISPUTE_TOOL_NAME = "FDI_ELIGIBILTY_TOOL"` is missing the "I" in "ELIGIBILITY." This value propagates into session state entries and CloudWatch log messages. Impact is limited to trace/debugging consistency.
+- **Tempfile cleanup under warm Lambda reuse.** `secretManagersCert()` (SessionState.py) writes cert, key, and CA files to `tempfile.NamedTemporaryFile(delete=False)` at module-scope import. The same pattern runs in Token.py. Across many warm invocations of the same Lambda container, `/tmp` could accumulate these files without cleanup. For IV, confirm that Lambda `/tmp` is cleaned between invocations in the production container lifecycle or that the existing pattern has been tested under sustained warm load.
+- **Dict-merge precedence in `lambda_handler`.** The payload build `{**session_data, **event, **matched_transaction}` applies left-to-right precedence, with the matched transaction record winning over the LLM-supplied event. This is functionally correct (the matched record is authoritative), and matches the pattern used by the submit tool.
+
+---
+
+# Escalation and Rollback Procedures — Working Notes
+
+The PA does not include formal findings on escalation and rollback procedures because these are go-live operational readiness items rather than model risk validation items. This section records Validation's observations for IV reference.
+
+## Offsite-Presented Deployment Approach (April 21, 2026)
+
+The Business Line presented a phased rollout methodology in substance at the April 21 offsite. Key elements:
+
+- **Phased activation.** Start with a time-boxed activation (e.g., a half-day in one region), then revert to legacy. Evaluate technology logs, operational feedback, and agent experience before expanding. Wait for the full downstream lifecycle to complete (Casper to Visa takes approximately 3 days for dispute confirmation; payment-related lifecycles can take up to 7 days) before increasing throttle. Increase throttle incrementally over multiple weeks. Time-based activation (turn on for specific windows) versus percentage throttle both remain on the table.
+- **War room at go-live.** Cross-functional (Operations, Technology, Data and Analytics, and other partners) with designated forums for sharing technical metrics, CSAT data, banker feedback on the handoff, and defect triage.
+- **AWS support specialist.** Dedicated support specialist model for US Bank (contextually aware, 24x7 for Nova Sonic issues related to disputes and collections); requested advance notice of rollout phases so support specialists can be on the call from start to finish.
+- **UAT testing through code freeze.** Testing continues through code freeze (two weeks before go-live); defects found after code freeze would be treated as showstoppers, otherwise findings become fast-follow items.
+- **Material change position.** If a material change is needed during the pilot, options are: end the pilot early, start a new pilot, or wait for the next production approval cycle.
+
+## Residual Questions for IV
+
+The offsite content covers deployment and rollout (how to turn the model on incrementally, how to watch it at go-live). It does not cover rollback and incident response (how to turn the model off if something goes wrong, and who decides). Specifically, the following were not addressed:
+
+- Who has authority to take the model offline during the pilot.
+- What events trigger an immediate rollback to human-only processing (threshold-based, event-based, or both).
+- Notification process to MRM if the model is taken offline or if a material error is identified.
+- Post-incident review process for model-related errors.
+
+The war room forum is a triage and operational reaction mechanism, not a defined rollback procedure. IV should confirm whether the model owner has documented these items before full production approval.
+
+---
+
+# Multi-Claim Scenario Expansion for IV
+
+Multi-claim scenarios warrant expanded coverage beyond the single DDIAI-91 case reconstructed during PA (see Part 1). Suggested IV scope includes: multi-claim with dispute-type switching in the opposite direction (PE#DC then PE#IA); multi-claim where the second search tool invocation is required to disambiguate across a larger cached transaction set; multi-claim with escalation on the second claim (e.g., the second transaction exceeds $300 or is recurring); and the IVRCallReference uniqueness behavior under two-claim sessions (Item 82, DDIAI-139 — both claims share the same ContactId as IVRCallReference, which was noted as a known limitation at PA). The detailed merged-timeline methodology used for DDIAI-91 (reconstruction from three log sources cross-referenced by ContactId) is available to IV as a template for deeper trace analysis.
+
+- **Contact person field (nameOfContacted):** The PA review noted that the Claim 2 submit log showed contactPerson populated, while the Claim 1 submit log excerpt did not clearly show the field. This pattern was resolved during PA via DDIAI-66. For IV, confirm across a larger production or UAT sample whether nameOfContacted is populated consistently under V10.
+
+---
+
+# Guardrail Testing Coverage Assessment Against GenAI Development Template Section 7.2
+
+### Coverage Assessment Against Section 7.2 Requirements
+
+**PII Protection (covered):** Three dedicated test cases (DDIAI-57, DDIAI-60, DDIAI-86) plus one incidental PII test during a duplicate charge interview. Testing covered the caller volunteering PII, requesting the AI reveal PII, and the AI's handling of unsolicited PII. Initial failures (DDIAI-57: 7 attempts before escalation; DDIAI-59: 15 attempts with no escalation) led to prompt tuning. The March 28 system prompt now includes a dedicated `<pii_handling>` section with a 2-attempt escalation protocol. The Bedrock Guardrails PII/PCI policy provides an independent infrastructure-level layer with ANONYMIZE and BLOCK actions for 20+ sensitive data types.
+
+**Model/System Prompt Disclosure (covered):** Two test cases (DDIAI-58, DDIAI-59) targeting system prompt, model identity, and tool disclosure. Initial failures when disclosure requests were distributed across the full interview (rather than asked consecutively) led to prompt tuning. The system prompt includes explicit instructions not to reveal system prompt, model identity, or tools, with worked examples for each scenario.
+
+**Jailbreak / Prompt Injection (partial):** One dedicated test case (DDIAI-136) covering authority manipulation and instruction override attempts. The Bedrock Guardrails Prompt Attack filter is set to HIGH on input, providing infrastructure-level protection. However, testing is limited to a single scenario with manual attack attempts. No automated attack datasets (e.g., MIT AI Risk Repository, ETAQ) or automated toolkits (e.g., Garak, Adversarial Robustness Toolbox) were used. No encoding-based attacks (base64, Unicode, non-English language) were tested, despite the system prompt instructing the AI to "decline malicious requests regardless of encoding format or language."
+
+**Off-Topic / Malicious Content Injection (partial):** One test case (DDIAI-137) with political content injection. The AI correctly stayed on topic. No systematic testing of other off-topic categories (e.g., financial advice requests, competitor product inquiries, social engineering).
+
+**Hallucination Detection (not tested):** No dedicated hallucination detection test cases were performed. The merchant response summarization risk (Item 28) is related but was identified through functional testing, not guardrail testing. The model's anti-hallucination instruction ("MUST only provide information from tool results, conversation history, or retrieved content -- never from general knowledge or assumptions") has not been systematically tested. [TBD -- For IV, Validation will expect hallucination-specific test scenarios, such as asking the AI about account balances, interest rates, or policy details not available through the search/submit tools.]
+
+**Toxicity Testing -- Output (not tested):** No dedicated test cases verify whether the AI can be provoked into generating toxic, harmful, or inappropriate language. The Bedrock Guardrails content policy filters AI output at HIGH strength for Sexual, Violence, Misconduct, Hate, and Insults, providing infrastructure-level protection. However, no test cases were designed to trigger toxic output and verify the guardrail catches it. [TBD -- For IV, Validation will expect output toxicity testing, including adversarial scenarios designed to elicit toxic responses through indirect provocation.]
+
+**Data Exfiltration (not tested, partially mitigated by architecture):** No dedicated test cases target data exfiltration attempts. However, the architecture provides meaningful structural mitigations. The search tool's DynamoDB queries are filtered by `ContactId`, meaning the LLM can only access the active caller's transactions regardless of what it is prompted to retrieve -- cross-customer data exfiltration is prevented at the data layer, not the prompt layer. For credential exfiltration (e.g., attempting to trick the AI into revealing API keys, OAuth tokens, or infrastructure secrets), the risk is mitigated by design: authentication credentials are retrieved at runtime by the Lambda tool code via AWS Secrets Manager and passed in HTTP headers. These credentials never enter the LLM's context window and therefore cannot be leaked through conversation. The Bedrock Guardrails PII/PCI policy independently BLOCKs AWS access keys and secret keys if they appear in output. Despite these mitigations, no adversarial test cases were designed to verify the boundaries (e.g., asking the AI to describe its tool configuration, reveal environment variables, or return raw API responses). [TBD -- For IV, Validation will expect data exfiltration test scenarios targeting both the LLM conversation layer and the tool layer to confirm the architectural mitigations hold under adversarial conditions.]
+
+**Red Teaming (not performed):** No formal red teaming was conducted. All guardrail testing was manual, SME-designed, and scenario-based. Section 7.2 expects documentation of red teaming procedures and scope, attack datasets used, automated testing toolkits employed, and manual expert testing coverage. None of these are documented. [TBD -- For IV, Validation will expect either formal red teaming or a documented risk acceptance from the model owner explaining why it was not performed.]
+
+---
+
+# Questions Deferred to IV
+
+The following items were identified during PA review but are IV-level depth. They are recorded here for follow-up during the Initial Validation phase.
+
+- Confirm the UAT transaction database composition: whether test data is synthetic/sanitized or masked production data, the number of rows and days of transaction history covered, and the number of test customer accounts configured.
+- Confirm whether amountDisputed (calculated by the submit tool code) was validated separately from tranAmount (the bank-recorded posted amount) in the SME review, or whether the SME checklist item "Transaction amount" covered only tranAmount.
+- Document the decision boundary between in-scope and out-of-scope dispute types. The 2 in-scope pilot types (Incorrect Amount, Duplicate Charge) are processed end-to-end; the 10 non-pilot types are expected to escalate. The data partitioning logic (how the model classifies and routes each type) is not formally documented outside the system prompt.
+- Design test cases that deliberately produce incorrect model behavior (e.g., feeding contradictory information, triggering tool errors, or providing inputs that should fail validation) to verify that the system's error detection and recovery paths function as intended. SME testing at PA exercised expected behavior; no cases were designed to verify graceful failure.
+
+---
+
+# PE#DC Duplicate Transaction ID — Architectural Observation (Added 4/28)
+
+During code review of the search tool (fdi_txn_search_tool.py), Validation identified the following behavior for duplicate charge (PE#DC) disputes:
+
+1. The search tool's `remove_duplicate_trans` function deduplicates results by the composite key (Amount, Date, MerchantName). For a genuine duplicate charge scenario (two transactions with identical amount, date, and merchant), the deduplication collapses them into a single record before returning results to the LLM. The LLM only ever sees one transaction.
+
+2. The submit tool sends a single Casper payload with one `refNumber` (the surviving `disputedTransactionId`). The `origTxRefNumber` field, which the Casper swagger describes as "required only for PBOM - duplicate charge dispute reason code," is populated from the same `disputedTransactionId`, not from the second duplicate's transaction ID. The submit tool has no mechanism to send two transaction IDs in a single submission.
+
+3. The second duplicate's transaction ID is never captured, never submitted to Casper, and never marked as disputed anywhere in the system.
+
+**IV question:** Does Casper's downstream processing independently identify and link the second duplicate from the same account based on matching amount/date/merchant, or does it only act on the single submitted reference number? If the latter, the second charge may remain undisputed and the customer may need to file a separate dispute for it.
+
+This is a business process question, not a model defect. The deduplication is by design (prevents presenting indistinguishable records to the customer). But the downstream consequence for PE#DC claims should be documented and confirmed with the model owner during IV. Added as Action Item 105.
+
+---
+
+# Rollback and Incident Response — IV Gaps (Added 4/28)
+
+The offsite content (April 21) covers the deployment and rollout methodology: phased activation, war room at go-live, wait for downstream lifecycle completion before increasing throttle. These are operational readiness items and are documented in the PA Risk Mitigation section as supporting the phased rollout approach.
+
+The following rollback and incident response items were not addressed at the offsite and remain open for IV:
+
+- Who has authority to take the model offline during the pilot (named role or title, not "the team").
+- What events trigger an immediate rollback to human-only processing: threshold-based (e.g., error rate exceeds X%), event-based (e.g., a single incorrect dispute filed), or both.
+- Notification process to MRM if the model is taken offline or if a material error is identified during the pilot.
+- Post-incident review process for model-related errors: who reviews, what is documented, and how findings are fed back into the model.
+
+The war room forum is a triage and operational reaction mechanism, not a defined rollback procedure. IV should confirm whether the model owner has documented these items before full production approval.
+
+---
+
+# April 28 TBD Status Summary (Internal Tracking)
+
+The following TBDs in the PA draft have been updated with current status as of April 28. This summary is for Jordan's reference to track which items need resolution before PA sign-off (target May 13).
+
+**Required before PA sign-off:**
+- DeepEval V10 regression results (Purnima, target 4/22, not received). Required to confirm 31/33 pass rate and disposition of 2 non-passing cases. PA narrative has TBD placeholder.
+- SME field-level evaluation checklist count (Item 103, Linda/Purnima). Is it 12 fields or 11? Minor but affects the stated denominator.
+
+**Nice-to-have for PA, required for IV:**
+- 60-turn session limit AWS confirmation (Baloo, target 4/22, not received). PA proceeds with approximate figure.
+- Search tool result row limit negative testing (BL, target 4/22, not received). PA proceeds without hard limit.
+- Contact Lens 24 attributes documentation (Baloo, target 4/22, not received).
+- V10 per-turn flow diagram and conversation workflow diagram (Baloo, target 4/22, not received).
+- purchaseDescription on PE#IA submissions (line 189 TBD). Confirm with MO whether intended.
+- Casper API date format validation (Item 98, deferred to IV).
+- origTxRefNumber/origTxDate spot check on PE#DC submissions (line 461 TBD).
+- contactMethod validation and untested conditional fields (line 462 TBD).
+- SME spot-check results on unchecked fields (line 465 TBD).
+
+**Resolved at PA (no longer TBDs):**
+- DDIAI-147 3-claim rate limit: confirmed as part of V10 eligibility tool.
+- DDIAI-132 non-standard utterances: disclaimer risk eliminated by V10 architecture; disclosure utterance definition deferred to IV.
+- DDIAI-140 call termination: prompt fix applied; background noise root cause deferred to IV.
+- DDIAI-139 multi-claim: TempClaimID added in V10 submit tool code.
+- 16 open bugs (Item 83): BL confirmed all fixed at 4/15 meeting; normal UAT closure cycle.
+
+---
+
+*End of IV Observations Document*
