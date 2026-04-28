@@ -1,369 +1,51 @@
-# Model 7409 — Pilot Metrics Catalog by Validation Category
+### Ticket 11 — DeepEval Framework Mechanics and Evaluation Gap Analysis for Model 7409
+
+**Estimate:** 3 hours
+**Due Date:** 4/30/2026
+
+**Focus:** We need to understand how the DeepEval framework actually works under the hood so Validation can assess what the 7409 test configuration is and is not evaluating. The test input JSONs define scenarios and expected outcomes, but we need clarity on the simulation mechanics, termination behavior, and what metrics are available versus what 7409 is actually using.
+
+**What to do:**
+
+- Go to deepeval.com/docs and read the ConversationSimulator documentation and the metrics introduction. Understand how the simulator runs a multi-turn conversation from a ConversationalGolden (scenario, user_description, expected_outcome), how it decides when to stop, and what happens when the model refuses a prompt (as in our guardrail tests).
+- Look at the DeepEval test input JSON files from the model owner. Map what we are actually evaluating (the SessionStateMetric, field_capture block) against what DeepEval offers out of the box. Identify what standard metrics exist in the framework that we are not using, and note which gaps matter most for a customer-facing IVR model.
+- Address three specific questions in your writeup: (1) If the model correctly refuses a guardrail attack, does the simulator keep retrying forever or does it stop? (2) How does DeepEval know if the model said something toxic or biased, given our current configuration? (3) Can DeepEval evaluate whether the model should NOT have called a tool (e.g., should not submit a case on a guardrail scenario)?
+
+**Deliverable:** A 1-2 page note covering: how the simulator works (one paragraph), how termination and adversarial scenarios are handled, what we are evaluating versus what we are not, and a short recommendation on what the model owner should consider adding for IV-stage testing.
 
 ---
 
-## Metric Count Summary
+### Ticket 12 — Organize DeepEval Test Scenarios by Validation Category and Identify Coverage Gaps
 
-| Source | Count |
-|---|---|
-| Baloo — Technical Performance and Operations | 14 |
-| Baloo — Technical Safety and Compliance | 6 |
-| Baloo — Traceability (non-scored) | 1 |
-| Ekene — Business Metrics | 9 |
-| CX Team — Customer Satisfaction | 3 |
-| Pre-Pilot SME Testing (PA-stage only) | 2 |
-| Nova Pro V1 Real-Time Alerting (evaluator layer) | 7 (same safety/compliance categories; evaluator accuracy not separately measured) |
-| **Total distinct named metrics** | **35** |
+**Estimate:** 2.5 hours
+**Due Date:** 4/30/2026
 
-Note: Nova Pro V1 monitors seven of the safety/compliance and performance categories listed under Baloo's metrics. These are the same metrics computed by a different model (Nova Pro V1 rather than offline aggregation), so they are counted once but flagged separately because the evaluator layer introduces its own accuracy question.
+**Focus:** The PA draft organizes SME testing results by validation category (happy path by dispute type, fuzzy matching, transfer/escalation, guardrail/adversarial, etc.). The DeepEval test scenarios need the same treatment so we can see at a glance what is covered and what is not.
 
----
+**What to do:**
 
-## Category 1: Correctness (§7.1 — Outcome Analysis)
+- Pull the full list of DeepEval test input JSONs from the model owner's test configuration.
+- Categorize each scenario using the same validation categories used in the PA draft (e.g., happy path incorrect amount, happy path duplicate charge, fuzzy merchant name, fuzzy date, fuzzy amount, transfer/escalation, guardrail malicious, guardrail tool disclosure, guardrail off-topic, etc.).
+- For each category, note how many DeepEval scenarios exist versus how many SME scenarios covered the same category.
+- Identify gaps: categories that had SME coverage but have no DeepEval scenario, and categories that have no coverage at all. Flag any new scenarios in DeepEval that were not part of the original 52 SME cases.
+- Note any recommendations for scenarios the model owner should add to improve the test suite for IV-stage regression and adversarial testing. Think about what paths remain untested (e.g., merchant contact "N" and "U" paths, boundary amounts near $300, ambiguous dispute descriptions).
 
-Correctness measures whether the model produced the right answer: correct dispute type classification, correct Casper field values submitted.
-
-| # | Metric | Source | Definition | Goal Value | Coverage Level | IV Notes |
-|---|---|---|---|---|---|---|
-| 1 | Intake Error Rate | Ekene (FDW) | Percent of calls where the bot assigned an incorrect claim type or submitted incorrect Casper field values. Blended across channels. | ≤10% | Covered at pilot scope | Primary correctness metric. Classification error (wrong dispute type) and field-value error (wrong amount, date, merchant) are both captured. |
-| 2 | Successful Casper Submission Rate | Pre-pilot SME testing | Percent of in-scope test calls where all Casper fields matched what was said during the conversation. | ≥90% | PA-stage only | Pre-pilot metric. Pilot equivalent is Intake Error Rate (inverse framing). |
+**Deliverable:** A table with columns: Validation Category, DeepEval Scenario Count, SME Scenario Count, Coverage Notes. Follow the table with a short list of recommended additions.
 
 ---
 
-## Category 1A: Faithfulness (§7.1 — LLM-as-Judge Output Quality)
+### Ticket 13 — Review DeepEval Test Outputs for Model Misses
 
-**N/A by design, with one exception.** Faithfulness evaluates whether a model's outputs are grounded in retrieved context. Model 7409 is not a RAG or open-ended generation model. Its outputs are structured tool calls and scripted conversation stages, not free-form answers synthesized from retrieved documents. The risk that faithfulness testing addresses in a general chatbot — the model asserting unsupported claims — is mitigated here by the correctness metric (Intake Error Rate, which verifies submitted field values against what the customer said) and by the deterministic tool-call architecture (the model cannot fabricate transaction data; it can only use what the search tool returns).
+**Estimate:** 3 hours
+**Due Date:** 5/1/2026
 
-**Exception: `merchantResponse` field summarization.** The `merchantResponse` Casper field is a free-text LLM summary of the customer's description of their interaction with the merchant. The model developer confirmed that the LLM summarizes the conversation context at submission time rather than passing through verbatim customer language. Early SME testing documented an example: the customer said "that I follow up with my bank" and the Casper field showed "Follow up with bank." This is a narrow faithfulness risk — the summary could omit, distort, or fabricate details about what the merchant told the customer. This is assessed as minor because the field is informational input to the claims process rather than a determinative field (dispute type, amount, and transaction identity drive the claim outcome), but material distortions could affect downstream claims processing.
+**Focus:** The DeepEval test outputs contain the full simulated conversations and evaluation results. We need someone to read through them and flag any cases where the model did something wrong, whether or not the DeepEval metrics caught it.
 
-**IV action (minor):** No separate faithfulness metric required. The sampled pilot call review (Layer 1 field-level correctness) already compares Casper fields against the conversation transcript. Reviewers should annotate `merchantResponse` specifically, flagging cases where the LLM summary materially diverges from what the customer said. This is an additional annotation on the existing review, not a separate activity.
+**What to do:**
 
----
+- Pull the DeepEval test output files (the completed conversation logs with evaluation results) from the model owner.
+- Read through each conversation. For every scenario, check: Did the model collect the right information? Did it call the right tools? Did it reach the correct outcome (submission, transfer, or refusal)? Did it say anything incorrect, inappropriate, or off-script?
+- Flag any model misses. A miss is anything where the model's behavior deviates from what a human reviewer would consider correct, even if the DeepEval metric scored it as passing. Examples: wrong field value captured, unnecessary escalation, failure to ask a required question, incorrect dispute classification, hallucinated policy language, or a guardrail scenario where the model partially complied with a malicious request before refusing.
+- You do not need to document every turn. Only note the turns where something went wrong, and describe where in the conversation it happened (e.g., "during merchant contact collection," "at the point of case submission," "after the first refusal attempt").
 
-## Category 2: Relevancy (§7.1 — LLM-as-Judge Output Quality)
-
-**N/A by design.** Relevancy evaluates whether a model's free-text responses are on-topic relative to a query. Model 7409 operates within a scripted multi-stage interview flow with eleven enumerated escalation triggers; it does not generate open-ended responses to arbitrary queries. Off-topic input is handled by Topic Containment (guardrail block) and the escalation framework, both of which are assessed under Guardrail/Safety (Category 7). In-domain response appropriateness is a function of the system prompt's stage logic, which is assessed through correctness testing and tool-sequence review. Document design rationale at IV; no separate relevancy testing required.
-
-Topic Containment (#3 below) is reclassified to Guardrail/Safety where it substantively belongs.
-
----
-
-## Category 3: Completeness (§7.1 — LLM-as-Judge Output Quality)
-
-Completeness measures whether each interaction covers all required information.
-
-| # | Metric | Source | Definition | Goal Value | Coverage Level | IV Notes |
-|---|---|---|---|---|---|---|
-| 4 | Bot Successful Interview Completion Rate | Ekene (ELZ) | Percent of calls where the bot completed the interview through Casper submission. | ≥90% | Partial | Measures end-to-end completion only. Does not measure per-turn completeness (e.g., whether all required follow-up questions were asked before escalating). |
-| 5 | Incomplete Interview | Ekene (ELZ) | Percent of claims submitted that are considered incomplete interviews (counter-metric to completion rate). | Monitor and Measure | Partial | Complement to #4. Same per-turn limitation. |
-
-**Template gap:** No per-turn completeness metric defined. IV should assess whether the model asks all required questions at each stage before advancing.
-
----
-
-## Category 4: Agentic Component-Level (§7.1 — Planning, Tool Selection)
-
-These metrics assess the agent's planning optimality and tool-use accuracy.
-
-| # | Metric | Source | Definition | Goal Value | Coverage Level | IV Notes |
-|---|---|---|---|---|---|---|
-| 6 | Average Steps Taken per Intent | Baloo (ops) | Average number of steps taken to resolve a specific intent. | N/A (monitoring) | Indirect | High step count signals a planning issue but no "optimal path" ground truth is defined against reference interview flows. |
-| 7 | Tool Retries (total) | Baloo (ops) | Total number of tool retries across all tools per call. | N/A (monitoring) | Indirect | Elevated retries signal tool selection or argument issues but are not normalized against expected call complexity. |
-| 8 | Individual Tool Retries (per tool, highest) | Baloo (ops) | Tool retries at the individual tool level, reporting the highest. | N/A (monitoring) | Indirect | Identifies which tool contributes most retries. |
-| 9 | Tool Error (invalid arguments) | Baloo (ops) | Number of times invalid arguments were sent to tools (DB query or API). | N/A (monitoring) | Partial | Captures invalid arguments but not incorrect tool selection (e.g., calling submit before eligibility). |
-| 10 | Tool Calls (total) | Baloo (ops) | Total number of tool calls per call. | N/A (monitoring) | Indirect | Volume metric. Deviation from expected call-flow tool count is informative but not formally defined. |
-
-**Template gap:** No tool selection accuracy metric (correct tool in correct sequence). No planning optimality rubric tied to reference interview flows. IV should include a per-call review of tool-call sequence against the expected stage flow on a sampled set.
-
----
-
-## Category 5: Business / Operational (§7.1 — Application-Level Performance)
-
-| # | Metric | Source | Definition | Goal Value | Coverage Level | IV Notes |
-|---|---|---|---|---|---|---|
-| 11 | Containment | Baloo (ops) | Calls resolved without human transfer. | N/A (monitoring) | Covered | |
-| 12 | Call Containment Rate | Ekene (ELZ) | Percent of calls contained in the IVR and not transferred to an agent. | 23% (baseline 6%) | Covered | BL footnote flagged this as needing intent-level and eligibility criteria discussion for MVP fitness. |
-| 13 | AHT | Ekene (ELZ) | Average handle time: bot interaction through claim submission; total IVR time; overall AHT for uncontained calls comparing bot intervention vs. not. | TBD (Monitor and Measure) | Covered | Not directly comparable to human-agent AHT. |
-| 14 | Calls Offered Impact | Ekene (ELZ) | [Definition not provided at offsite; inferred as volume impact metric.] | N/A (monitoring) | Covered | Clarify definition with BL. |
-| 15 | Impact to Intake Claim Volume | Ekene (FDW) | Percent volume variance in claim intake volume post bot channel. | TBD (Monitor and Measure) | Covered | |
-| 16 | Touches/Claim/Channel | Ekene (FDW) | Number of actions taken by a human on the claim, broken down by channel. | TBD (Monitor and Measure) | Covered | |
-| 17 | Requests for Additional Information/Channel | Ekene (FDW) | Percent of time needing to reach out to the client for additional information. | TBD (Monitor and Measure) | Covered | |
-| 18 | Intake Success Rate | Ekene (combined) | Percent of time intake is successful (combined ELZ and FDW). | TBD (Monitor and Measure) | Covered | |
-| 19 | Total Interview Duration | Baloo (ops) | Total duration of the AI interview. | N/A (monitoring) | Covered | |
-| 20 | Duration Percent Before Agent Request | Baloo (ops) | Share of call time before human escalation. | N/A (monitoring) | Covered | |
-| 21 | Total AI Cost | Baloo (ops) | Cost per call based on token usage. | N/A (monitoring) | Covered | |
-| 22 | Token Used Per Minute | Baloo (ops) | Used to identify indefinite loops or token consumption spikes. | N/A (monitoring) | Covered | |
-
-**Coverage assessment:** Business metrics are well-specified at the pilot level. Several have goal values explicitly marked TBD with baselines to be set during Monitor and Measure; appropriate at PA stage but should have concrete values by IV.
-
----
-
-## Category 6: Customer Experience (§7.1 — Business Metrics)
-
-| # | Metric | Source | Definition | Goal Value | Coverage Level | IV Notes |
-|---|---|---|---|---|---|---|
-| 23 | Call Satisfaction (CSAT) | CX team | Survey metric: customer satisfaction with the call experience. | 76% (baseline Monitor and Measure) | Covered | Added to existing IVR survey; comparison to live-agent experience where possible. |
-| 24 | Issue Resolution | CX team | Survey metric: whether the customer's issue was resolved. | N/A (survey) | Covered | |
-| 25 | Effort to Resolve | CX team | Survey metric: effort required from the customer. | N/A (survey) | Covered | |
-
----
-
-## Category 7: Guardrail / Safety (§7.2)
-
-| # | Metric | Source | Definition | Goal Value | Coverage Level | IV Notes |
-|---|---|---|---|---|---|---|
-| 26 | Toxicity and Profanity blocks | Baloo (safety) | Blocks triggered by profanity or toxicity. | N/A (counter) | Partial | Counter only; no attempt denominator for rate computation. |
-| 27 | Privacy (PII) blocks | Baloo (safety) | Blocks triggered by PII mention. | N/A (counter) | Partial | Same denominator limitation. |
-| 28 | Unauthorized Commitment | Baloo (safety) | Any unauthorized commitment made by the AI agent. | N/A (counter) | Partial | |
-| 29 | Jailbreaks (successful prompt injection) | Baloo (safety) | Successful prompt injection attacks detected. | N/A (counter) | Partial | Tracks successful bypasses but does not normalize against total adversarial attempts. |
-| 30 | Refund Commitment | Baloo (safety) | Any refund or financial commitment made by the AI agent. | N/A (counter) | Partial | |
-| 31 | Topic Containment (out-of-domain) | Baloo (safety) | Out-of-domain question blocks. | N/A (counter) | Partial | Also listed under Relevancy (#3). |
-
-**Pre-pilot guardrail testing (PA-stage):** 9 dedicated test cases covering PII protection, model/system prompt disclosure, jailbreak attempts, and off-topic injection. All passed (0/9 bypass rate on the tested set).
-
-**Template gaps:**
-- **Bypass rate denominator:** Pilot counters track observed blocks during live calls, but without a structured adversarial attempt population (pre-launch red team or systematic adversarial sample), no attempt denominator exists for computing a bypass rate. IV requires a structured red-team campaign.
-- **False positive rate:** No metric captures legitimate queries incorrectly blocked by Bedrock Guardrails or by prompt-based escalation. Early-escalation patterns observed at the offsite suggest this is material.
-- **Severity scoring and pattern analysis:** Categories are present but severity bands and periodic pattern review are not defined.
-- **Pre-launch red teaming:** No formal red team beyond the SME-level 9 guardrail cases. Red teaming is a stated IV requirement in the PA draft.
-- **Evaluator accuracy:** Nova Pro V1 computes the safety/compliance metrics in real time. Its accuracy (false positive/negative rate on each category, agreement with human-reviewed samples) is not measured. IV should document evaluator-model validation.
-
----
-
-## Category 8: Robustness and Sensitivity (§7.4)
-
-| # | Metric | Source | Definition | Goal Value | Coverage Level | IV Notes |
-|---|---|---|---|---|---|---|
-| 32 | Catch Error | Baloo (ops) | Number of times the AI agent says "I didn't catch that" or "Could you repeat?" | N/A (monitoring) | Indirect | Signals speech-recognition failures (upstream Nova Sonic) and conversational ambiguity but is not attributed by root cause. |
-| 33 | Slot Filling Retries | Baloo (ops) | AI agent asking for the same required information more than once. | N/A (monitoring) | Indirect | Elevated retries could signal sensitivity to input phrasing. |
-| 34 | Latency (round-trip) | Baloo (ops) | Round-trip response time. | N/A (monitoring) | Covered (operations) | Not a robustness metric per se, but extreme latency may correlate with complex/ambiguous inputs. |
-| 35 | API Error (5xx) | Baloo (ops) | Failures while calling backend APIs. | N/A (monitoring) | Covered (operations) | Infrastructure reliability metric. |
-
-**Pre-pilot sensitivity testing (PA-stage):** Fuzzy merchant name, fuzzy amount, and fuzzy date test variants included in the 56 SME test cases. Small-sample, scenario-based. Offsite Day 1 surfaced additional fuzzy-input failures (merchant name variants, future dates, approximate amounts) handled by escalation rather than resolution.
-
-**Template gaps:**
-- **Systematic semantic perturbation:** No regime with retrieval overlap or pair-wise LLM evaluation as referenced in the template. IV should include a structured perturbation study on production-like utterances.
-- **Multi-turn and topic-change robustness:** One live UAT call (Call 2) demonstrated three escalation triggers on a single call; no quantitative long-context or topic-change metric. IV should include a multi-turn stress set.
-- **Speech-input noise robustness:** No quantitative metric. Background-noise sensitivity flagged critical for go-live; AWS committed to receive recordings for root-cause analysis. No formal testing regime planned for pilot.
-- **Component-level error attribution:** Catch Error and Slot Filling Retries do not distinguish between upstream speech recognition errors (Nova Sonic) and LLM reasoning errors (Claude Haiku 4.5). IV should include component-level error attribution.
-
----
-
-## Category 9: Explainability (§7.5)
-
-| # | Metric / Mechanism | Source | Definition | Coverage Level | IV Notes |
-|---|---|---|---|---|---|
-| — | QIC Trace Log | Baloo (traceability) | System prompt, expanded tool schemas, conversation history, tool call results per call. | Covered | Validation performed end-to-end walkthroughs including a multi-claim session. |
-| — | CloudWatch Logs (4 sources) | Baloo (traceability) | Conversation analytics, search tool, eligibility tool, submit tool logs per call. | Covered | Intermediate reasoning observable. Merged trace capability needed for systematic assessment. |
-
-**Template gaps:**
-- **SME review and escalation process:** No documented process for SMEs to flag concerning patterns observed in traces. Required under §7.5. IV should define this.
-- **Provenance displayed to users:** N/A — not a retrieval-based model. Customer-facing provenance is limited to Casper case-number readback and AI-use disclosure.
-
----
-
-## Category 10: Benchmarking (§7.3)
-
-No benchmarking metrics were presented at the offsite.
-
-**Template requirement:** §7.3 requires comparison against a suitable benchmark. For Model 7409, the natural benchmark is the existing human-agent FDI dispute intake process. Metrics that should be compared at IV include AHT, intake error rate, CSAT, and touches per claim across the human-agent channel and the AI-agent channel.
-
-**IV action:** Model owner should be asked to provide the human-agent baseline data for the pilot dispute types (PE#IA and PE#DC) to support the §7.3 benchmarking comparison.
-
----
-
-## N/A by Design
-
-| Template Requirement | Rationale |
-|---|---|
-| Faithfulness — grounded in retrieved context (§7.1) | N/A with one exception. Not a RAG or open-ended generation model. Exception: `merchantResponse` field is an LLM summary of the customer's merchant-contact description. Minor faithfulness check assessed within the sampled call review (Layer 1 annotation). |
-| Relevancy — on-topic free-text responses (§7.1) | Not an open-ended chatbot. Scripted multi-stage interview flow with eleven escalation triggers. Off-topic input handled by Topic Containment and escalation framework (assessed under Guardrail/Safety). |
-| Memory retention accuracy and memory pruning effectiveness (§7.1) | No persistent memory. Each call runs within a single QIC session. |
-| Reflection quality (§7.1) | No reflection loop. Reasoning is produced per turn within the Claude Haiku 4.5 forward pass. |
-| RAG source-document provenance / sentence-level grounding (§7.5) | Not a retrieval-based model. |
-
-These require design-rationale documentation at IV rather than testing.
-
----
-
-## Summary of IV Coverage Gaps
-
-| Priority | Gap | Template Section | Recommended IV Action |
-|---|---|---|---|
-| High | No tool selection accuracy metric (correct tool in correct sequence) | §7.1 Agentic | Per-call review of tool-call sequence against expected stage flow on sampled pilot calls |
-| High | No bypass rate denominator for guardrail metrics | §7.2 | Structured red-team campaign with attempt counts |
-| High | No false-positive rate for guardrails | §7.2 | Sampled review of escalated calls for incorrect blocks |
-| High | No evaluator-model validation for Nova Pro V1 | §7.1 (upstream) / §7.2 | FP/FN rates on safety categories; agreement with human-reviewed samples |
-| Medium | No systematic semantic perturbation testing | §7.4 | Structured perturbation study on production-like utterances, or tag fuzzy-input cases in sampled call review |
-| Medium | No SME review and escalation process for trace patterns | §7.5 | Define process before IV |
-| Medium | No benchmarking against human-agent baseline | §7.3 | Human-agent baseline data for PE#IA and PE#DC |
-| TBD | No per-turn completeness metric | §7.1 | TBD if applicable — fixed stage flow may make end-to-end completion sufficient; revisit based on pilot observations |
-| TBD | Planning optimality not directly measured | §7.1 Agentic | TBD if applicable — simple linear stage flow; indirect proxies (#5, #6) may suffice |
-| TBD | No component-level error attribution (speech vs. LLM) | §7.1 (upstream) | TBD if applicable — may be addressed through sampled call review error tagging; explicit justification acceptable per template |
-| TBD | Pattern analysis of recurring attack vectors | §7.2 | TBD if applicable — falls out of red-team results (B16/B17) if conducted |
-| Medium | No speech-input noise robustness metric | §7.4 | Gap confirmed by offsite observations (background noise flagged critical for go-live). Quantitative metric needed; AWS to provide recordings for root-cause analysis |
-| Low | TBD goal values for 6 business metrics | §7.1 | Concrete values expected before IV |
-
----
-
-# Appendix A: All 35 Proposed Pilot Metrics (Numbered by Category)
-
-## Correctness
-
-1. Intake Error Rate
-2. Successful Casper Submission Rate (PA-stage; pilot equivalent is #1 inverse)
-
-## Completeness
-
-3. Bot Successful Interview Completion Rate
-4. Incomplete Interview
-
-## Agentic Component-Level
-
-5. Average Steps Taken per Intent
-6. Tool Retries (total)
-7. Individual Tool Retries (per tool, highest)
-8. Tool Error (invalid arguments)
-9. Tool Calls (total)
-
-## Business / Operational
-
-10. Containment
-11. Call Containment Rate
-12. AHT
-13. Calls Offered Impact
-14. Impact to Intake Claim Volume
-15. Touches/Claim/Channel
-16. Requests for Additional Information/Channel
-17. Intake Success Rate
-18. Total Interview Duration
-19. Duration Percent Before Agent Request
-20. Total AI Cost
-21. Token Used Per Minute
-
-## Customer Experience
-
-22. Call Satisfaction (CSAT)
-23. Issue Resolution
-24. Effort to Resolve
-
-## Guardrail / Safety
-
-25. Toxicity and Profanity blocks
-26. Privacy (PII) blocks
-27. Unauthorized Commitment
-28. Jailbreaks (successful prompt injection)
-29. Refund Commitment
-30. Topic Containment (out-of-domain)
-
-## Robustness / Sensitivity
-
-31. Catch Error
-32. Slot Filling Retries
-33. Latency (round-trip)
-34. API Error (5xx)
-
-## Explainability (mechanisms, not scored metrics)
-
-35. Traceability Logs (QIC trace + 4 CloudWatch log sources)
-
----
-
-# Appendix B: GenAI Development Template Section 7 — Ideal Metrics by Category
-
-These are the metrics and testing dimensions the template expects for a model of this type. Numbered for cross-reference. Items marked (N/A) are not applicable to Model 7409's design.
-
-## §7.1 Outcome Analysis — Correctness and Application-Level Performance
-
-B1. Field-level correctness rate (correct Casper field values vs. customer utterance) — *mapped to #1*
-B2. Dispute type classification accuracy — *mapped to #1 (same metric, subset)*
-B3. End-to-end completion rate — *mapped to #3*
-B4. Application-level performance on U.S. Bank data (live pilot) — *mapped to #1, #3, #11, #17*
-B5. Business metrics: AHT, issue resolution rate, CSAT, churn proxy — *mapped to #12, #22, #23, #24*
-B6. Segment-level performance breakdowns (by dispute type, by channel) — *partially mapped; Intake Error Rate is blended, not segmented*
-
-## §7.1 Outcome Analysis — LLM-as-Judge Quality Dimensions
-
-B7. Faithfulness (grounded in retrieved context) — *(N/A: not a RAG model)*
-B8. Answer relevancy (on-topic responses) — *(N/A: scripted interview flow)*
-B9. Completeness (per-turn information coverage) — *TBD if applicable; #3 covers end-to-end. The interview follows a fixed stage flow; per-turn completeness may be addressed by the sampled call review if warranted by pilot observations*
-
-## §7.1 Outcome Analysis — Agentic Component-Level
-
-B10. Planning success rate and optimality — *TBD if applicable; #5 is indirect proxy. Model follows a simple linear stage flow, not a complex planner. Template uses "if applicable" for agentic components*
-B11. Tool selection accuracy (correct tool in correct sequence) — *gap; #8 captures invalid arguments only*
-B12. Memory retention accuracy and memory pruning effectiveness — *(N/A: no persistent memory)*
-B13. Reflection quality — *(N/A: no reflection loop)*
-
-## §7.1 Outcome Analysis — Upstream Model Impact
-
-B14. Upstream speech model error rate (Nova Sonic) — *gap; #31 and #32 are indirect, not attributed*
-B15. Upstream evaluator model accuracy (Nova Pro V1 FP/FN rates) — *gap; not measured*
-
-## §7.2 Guardrail Testing
-
-B16. Total adversarial test attempts by risk category (hallucination, toxicity, adversarial) — *gap; PA had 9 cases, no structured IV-level campaign*
-B17. Bypass rate (successful bypasses / total attempts) — *gap; #28 tracks bypasses but no attempt denominator*
-B18. False positive rate (legitimate queries incorrectly blocked) — *gap; not measured*
-B19. Category breakdown and severity scoring of failures — *partial; categories exist (#25–#30), severity bands not defined*
-B20. Pattern analysis of recurring attack vectors — *TBD if applicable; template uses "if applicable." Falls out naturally from B16/B17 if red teaming is conducted*
-B21. Pre-launch red teaming documentation (scope, attack datasets, toolkits) — *gap; deferred to IV in PA draft*
-B22. Vendor guardrail performance (Bedrock Guardrails) — *partial; block counts available, accuracy not validated*
-
-## §7.3 Benchmarking
-
-B23. Comparison against human-agent baseline (AHT, intake error rate, CSAT, touches/claim) — *gap; data exists in Ekene's sources but not presented*
-B24. Benchmark justification and quantitative results — *gap; no benchmarking presented at offsite*
-
-## §7.4 Sensitivity and Robustness
-
-B25. Semantic perturbation testing (synonyms, rephrasing, punctuation noise, approximate values) — *partial; fuzzy SME test variants, small-sample*
-B26. Robustness over long contexts / multi-turn coherence — *partial (anecdotal); one live UAT call*
-B27. Topic change mid-conversation handling — *partial (anecdotal); same UAT call*
-B28. Noise handling in speech input — *gap; flagged critical for go-live at the April 21 offsite (Shailesh, AWS). Background-noise sensitivity observed during UAT; AWS committed to share recordings for root-cause analysis. No quantitative metric defined. Template "if applicable" is satisfied: this is applicable per offsite observations*
-B29. Component-level error attribution under perturbation — *TBD if applicable; §7.1 Box 3 states "if no impact assessment was performed, provide explicit justification." May be addressed through the sampled call review error-tagging process*
-
-## §7.5 Explainability
-
-B30. Reasoning at intermediate tool-use steps (agentic trace) — *mapped to #35 (QIC trace + CloudWatch)*
-B31. SME process for flagging concerning patterns in traces — *gap; not defined*
-B32. Provenance and traceability displayed to users — *(N/A: not a retrieval-based model; case-number readback and AI-use disclosure are the customer-facing equivalents)*
-
----
-
-## Cross-Reference Summary
-
-| Template Metric | Mapped to Pilot Metric(s) | Status |
-|---|---|---|
-| B1 Field-level correctness | #1 Intake Error Rate | Covered |
-| B2 Dispute type classification | #1 Intake Error Rate | Covered |
-| B3 End-to-end completion | #3 Completion Rate | Covered |
-| B4 U.S. Bank data performance | #1, #3, #11, #17 | Covered (pilot) |
-| B5 Business metrics | #12, #22, #23, #24 | Covered |
-| B6 Segment-level breakdowns | #1 (blended) | Partial — need by-dispute-type |
-| B7 Faithfulness | `merchantResponse` field only | N/A by design; minor exception for one summarized field |
-| B8 Relevancy | — | N/A by design |
-| B9 Per-turn completeness | #3 (end-to-end only) | TBD if applicable |
-| B10 Planning optimality | #5 (indirect) | TBD if applicable |
-| B11 Tool selection accuracy | #8 (invalid args only) | Gap |
-| B12 Memory retention | — | N/A by design |
-| B13 Reflection quality | — | N/A by design |
-| B14 Upstream speech error rate | #31, #32 (not attributed) | Gap |
-| B15 Evaluator model accuracy | — | Gap |
-| B16 Adversarial attempt counts | PA: 9 cases | Gap at IV level |
-| B17 Bypass rate | #28 (no denominator) | Gap |
-| B18 False positive rate | — | Gap |
-| B19 Category breakdown / severity | #25–#30 (no severity) | Partial |
-| B20 Pattern analysis | — | TBD if applicable |
-| B21 Red teaming documentation | PA: 9 cases | Gap at IV level |
-| B22 Vendor guardrail performance | #25–#30 (block counts) | Partial |
-| B23 Human-agent benchmark | — | Gap (data available) |
-| B24 Benchmark results | — | Gap |
-| B25 Semantic perturbation | Fuzzy SME variants | Partial |
-| B26 Long-context robustness | 1 UAT call | Partial (anecdotal) |
-| B27 Topic change handling | 1 UAT call | Partial (anecdotal) |
-| B28 Speech noise robustness | — | Gap (offsite-confirmed) |
-| B29 Component-level attribution | #31, #32 (not attributed) | TBD if applicable |
-| B30 Agentic reasoning trace | #35 (QIC + CloudWatch) | Covered |
-| B31 SME review process | — | Gap |
-| B32 User-facing provenance | — | N/A by design |
+**Deliverable:** A table with columns: Scenario Name, Where in Conversation, What Happened, What Should Have Happened, DeepEval Score (Pass/Fail). Follow the table with a short summary of any patterns across scenarios.
