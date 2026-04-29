@@ -1,80 +1,32 @@
-# Model 7306 PayView — Handover Prep Brief
+# Model 7409 — Meeting Agenda
 
-## Model Developer (MD)
+**Date:** [TBD]
+**Duration:** 30 minutes
+**Attendees:** Jordan, Jinjun, John, Baloo, Ravi, Purnima, Linda
 
-- Pre-Aug 2025: Chenglin / Xiaoqiao's team (Mistral Small 24B implementation)
-- ~Aug 14, 2025: Soumitri Kolavennu (took over, AICOE Smart SME Archetype team — essentially a new model from the previous implementation)
-- Apr 14, 2026: Sherin (per call with Validation)
+---
 
-## Model Owner (MO)
+## 1. Open Items and Access (5 min) — Baloo / John
 
-- ~Nov 10, 2025: Daniel Haber
-- By Apr 2026 EMA: Philip Georges (Other Owner), then Justin Caughlan (Primary Owner). Daniel Haber no longer listed. Philip is leaving the project; Justin is the go-forward MO.
+- (Item 104) Is the model restricted to U.S.-based customers only? Relevant to EU AI Act applicability (August 2026).
+- (Item 102) Context window: (a) search tool result row limit, (b) ~60 turn session limit confirmation from AWS.
+- (Item 94) Updated per-turn flow diagram reflecting V10 (eligibility tool, revised stage structure). Can defer to IV.
+- (Item 108) Validation requests access to the Amazon Connect platform (QIC dashboard, CloudWatch logs, Contact Lens analytics) to review model performance and monitoring data during the pilot and IV.
 
-## Current EMA Status (as of April 20, 2026 update)
+## 2. SME Evaluation Checklist (5 min) — Linda / Purnima
 
-- Primary Owner: Caughlan, Justin
-- Other Owner: Georges, Philip J (leaving project soon)
-- Model Developers listed: Kang, Jay Hunjeong; Kolavennu, Soumitri N (left bank)
-- MRO: Manirath, Patty
-- MRG Primary Contact: Tran, May
-- Validation Manager: Wu, Xinyu
+- (Item 103) Is the checklist 12 fields or 11? Is disclosure-read still part of the evaluation framework after the V10 disclaimer change? Additionally, four LLM-filled conditional fields are not on the checklist (unableToContactReason, explainNoAttemptToResolve, noShowOrPartialPrePayment, contactMethod) — confirm why these do not require SME evaluation.
 
-### EMA Needs Updating
+## 3. Pilot Monitoring and SME Review (5 min) — John / Linda / Baloo
 
-- Sherin should replace Soumitri as MD (left bank)
-- Confirm whether Jay Kang is still active or stale
-- Philip Georges leaving — Justin Caughlan taking over; Philip's record should be removed or updated
-- Confirm Daniel Haber's current role, if any
-- Confirm MRO — Patty Manirath
+The monitoring plan is the primary pre-launch dependency that is not yet defined.
 
-## PA Conclusion and Outcome
+- (Item 90) What is the SME review approach for production calls? Need sampling methodology, review medium, cadence, and reviewer assignment.
+- (Item 5) Contact Lens 24 attributes and Nova Pro V1 alerting thresholds and response actions. Does not block PA but is required for IV.
 
-**Outcome:** Approved with Restriction
+## 4. DeepEval Regression Testing (10 min) — Purnima / Ravi
 
-**Pilot window:** February 1, 2026 through August 1, 2026
+The PA cannot be signed off without understanding how V10 regression was measured.
 
-**Restrictions:**
-
-- Initially limited to 28 experienced sales agents (out of ~450 total), with potential expansion to 148 agents contingent on satisfactory performance
-- KB articles limited to up to 800 from the GTM and MMP Product Central SharePoint site
-- Success criteria for initial phase defined as a correctness metric of 67%
-
-**PA recommendations — during pilot:** Recommendations include logging and monitoring model behavior and performance, maintaining software controls and versioning, documenting HTML parsing and KASummary truncation as known limitations, and including a disclaimer for agents to verify answers via source links.
-
-**PA recommendations — before full production:**
-
-- Address HTML parsing issue
-- Address KASummary truncation issue
-- Explore improved retrieval (hybrid search, embedding models)
-- Consider consolidating four answers into a single synthesized response via an additional LLM call
-- Complete full model validation (Initial Validation)
-
-## Key Dates and Deadlines
-
-- Pilot has not started as of the April 14, 2026 call with Sherin
-- PA restriction effective date: August 1, 2026
-- Next validation activity (IV) due: August 1, 2026
-- Final pilot testing results due: July 31, 2026
-- Partial pilot results due at end of Phase 1 (March 1, 2026) and interim Phase 2 results by May 1, 2026 — neither confirmed as delivered
-- Monitoring plan due: May 5, 2026
-
-## How 7306 Differs from Model 6788 (24-Hour Banking)
-
-Model 7306 is architecturally a lift-and-shift of Model 6788's RAG and VRL framework, but with the following key differences:
-
-1. **Knowledge base:** Different set of KB articles. 6788 uses 24-Hour Banking articles; 7306 uses GTM/MMP Product Central SharePoint documents (up to 800, with 526 confirmed at one point). Documents are not curated KB articles — some cover many topics, some have parsing errors.
-2. **Foundation LLM:** 6788 used Mixtral 8x7B; 7306 upgraded to GPT-4o accessed via U.S. Bank's Azure OpenAI Gateway.
-3. **Number of answers per query:** 6788 defaulted to 2 top articles; 7306 generates 4 candidate answers. This is a parameterized setting (not a structural deviation), but it changes the user experience and evaluation methodology.
-4. **Retrieval field structure:** 6788 extracted Title, Purpose, Answer, and Procedure from structured JSON, with KeyBERT for keywords and LLM-generated Main Topic and Summary. 7306 sources from unstructured SharePoint HTML documents rather than structured JSON; it has no direct equivalents for Answer or Procedure, and relies on KASummary and KAFAQs instead. KAPurpose does not exist in 7306. The exact generation method (extraction vs. LLM) for each 7306 field should be confirmed with the MD during IV.
-5. **Business line and user population:** 6788 serves CBB branch employees (agents at call center); 7306 serves GTM/MMP sales agents (sales people on call with clients). Different domain — customer service vs. client engagement.
-6. **HTML parsing:** 7306 encountered known issues with HTML-to-text conversion from SharePoint articles using Beautiful Soup, documented as a limitation for the pilot.
-7. **Model governance:** MRG assigned a separate model ID due to different business line, monitoring process, user population, and document topics.
-
-## Talking Points for BL Handover Meeting
-
-- The change is not just a data source swap. The foundation LLM also changed. This is a completely new model per MRG's designation: different model owner, model monitoring process, business line, user population, and document topics.
-- Model performance testing must be refreshed based on the new business use cases.
-- The validation timeline is 10-12 weeks. There has never been a 16-week validation timeframe. BL should communicate accurately to their executives about the current state (development vs. validation phase) and avoid unnecessary fire drills.
-- Be transparent and frank — ungrounded blames directed at validation are not productive.
-- In addition to accurate information in executive discussions, the EMA itself needs to be accurate. Due to the multiple MD and MO handoffs on this model (Chenglin → Soumitri → Sherin on the MD side; Daniel Haber → Philip Georges → Justin Caughlan on the MO side), transitions need to be actively managed so that incoming personnel have accurate information about model status, outstanding commitments, and PA conditions. The EMA currently lists stale developer and owner information that should be corrected.
+- (Item 106) DeepEval reports all 33 test cases as "success" including 12 with misaligned tool call arguments. How is the BL scoring the suite to detect regressions? Provide V9 results on the same suite for comparison. The full V10 results were due April 22 and have not been received; this blocks PA sign-off.
+- (Item 107) The 12 misaligned cases need to be corrected and retested before the suite can serve as a regression baseline. What is the plan and timeline?
