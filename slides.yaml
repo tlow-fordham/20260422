@@ -1,553 +1,111 @@
-# Nimbus Uno Training Session Summaries
+# Model 7637 - Early Engagement Meeting Agenda
+**Date:** May 4, 2026
+**Duration:** 30 minutes
+
+**Attendees:**
+- MRM Validation: Xinyu Wu, Jordan Low, Aditi Pandey, Jinjun Tong, Mehdi Mafi
+- MRG: Sana Ahmed
+- Model Owner: John Lorence
+- Technical: Baloo Narayanan, Scott Hekman
 
 ---
 
-## Session 1 — Platform Overview & Project Setup
+## 1. Action Item Follow-Up (10 min)
 
-**Date:** ~Early April 2026
-**Status:** Missed — no transcript available
 
-**Topics covered (inferred from Session 2 references):** Platform architecture and layers, logging in, creating a project, audit trail overview, data upload (3 datasets uploaded), preliminary EDA (summary statistics, outlier assessment, missing value analysis).
+Status updates on outstanding items from the April 6 meeting:
 
----
-
-## Session 2 — Engineering & Segmentation / Pre-Modeling Techniques
-
-**Date:** Wednesday, April 8, 2026, 10:00–11:30 AM CT
-**Presenter:** Vivek (Solytic/Nimbus)
-**Coordinator:** Jeeta (Satyajeeta Misra, USB Nimbus project lead)
-**Attendees:** Ali, Peter, Duncan, Yixia (Isha), Emily, and others from MRM validation team
+- John: Has the article breakdown by business line been obtained from Liz Eisert? Are image-containing articles identified?
+- John: What is the status of the BL review of article suitability for customer-facing use?
+- Baloo: Have the Claude Haiku 4.5 hyperparameters (temperature, max input tokens, max output tokens) been confirmed with AWS?
+- Baloo: Can the system prompt, QIC configuration, and guardrail configuration be shared?
+- Baloo: Has vendor documentation or spec sheets for Cyara and DeepEval been obtained?
+- John and Baloo: What is the current progress on the three documentation templates (GenAI Development Template, Implementation Framework, Ongoing Monitoring Plan)?
+- Have SMEs begun developing test cases for Cyara?
 
 ---
 
-### Pre-Session Q&A
+## 2. GenAI Development Template - Section 6 Discussion (15 min)
 
-**Project sharing vs. collaborative projects (Ali)**
+To support the October 30 production timeline and the 12-week validation window, we would like to discuss Section 6 (Model Design and Construction) of the GenAI Development Template. The questions below follow the template structure. Where items are not applicable, a brief confirmation is sufficient.
 
-There are two distinct sharing mechanisms in Nimbus. The first is "Shared Project," which sends a copy of the entire project to another user — the recipient clones it into their own workspace. The two users do not interact within the same project instance. The second is "Collaborative Project," which creates a team workspace where multiple users work together on the same project with shared access to all artifacts.
+**Model Framework (6.1.1)**
 
-Ali flagged that some users (e.g., Yixia) were not appearing in the collaborative project user list but did appear in the shared project list. Vivek acknowledged this as a possible account-side glitch and committed to checking with the technology team.
+1. Can you confirm the component stack: Claude Haiku 4.5 for reasoning/generation, Nova Sonic for STT/TTS, QIC for orchestration and retrieval, Bedrock Guardrails for content filtering?
+2. Were alternative LLMs or frameworks evaluated before selecting the current stack? If the selection followed a standard platform decision, a brief statement is sufficient for the template.
 
-**UDF debugging not available (Ali)**
+**Retrieval and Knowledge Base (6.2.1, 6.2.2, 6.2.4-5)**
 
-When creating a User-Defined Function, there is no copy-paste option during function definition (though code can be edited after creation). The debug mode toggle exists but is deactivated. Vivek explained that Nimbus's built-in IDE (Jupyter) was not approved within US Bank, so Azure ML Studio is being used instead. The integration is not yet set up. Sessions 3 and 4 will cover Azure ML Studio setup, which will enable code debugging.
+3. Are the article tags from ServiceNow/Salesforce used as metadata filters in the retrieval pipeline, or is retrieval purely semantic?
+4. What is the underlying retrieval index technology within QIC? Is it a managed vector store, and is the specific technology or version known?
+5. What is the chunking strategy for ingested articles (e.g., fixed-size, recursive, semantic)? Are the chunk size and overlap configurable?
+6. What embedding model does QIC use for this deployment? Are the model name, version, and embedding dimensions known?
+7. What is the retrieval algorithm (sparse, dense, hybrid)? Are there relevance thresholds or reranking steps before the final context is passed to the LLM?
+8. How many chunks are retrieved, and how many are used for response generation?
+9. What are the procedures for updating the retrieval index when articles are added, modified, or retired in ServiceNow/Salesforce?
 
-**Platform latency / performance (Ali)**
+**LLM Configuration and System Prompt (6.2.2)**
 
-Even simple operations (e.g., a two-line print statement) were taking noticeable time in the job queue. Vivek noted that infrastructure sizing had been increased after latency issues in Session 1, and that QA testing earlier the same day may have contributed. Team to monitor and escalate to technology if latency persists.
+10. What are the confirmed hyperparameter values (temperature, max input tokens, max output tokens)?
+11. What is the prompt input limit and context window for the Claude Haiku 4.5 deployment?
+12. Are there output constraints such as maximum response length or truncation handling?
 
-**Time tracking methodology (Ali)**
+**Guardrails (6.2.2)**
 
-The platform tracks time spent per module for each user. Time tracking is activity-based: it runs while the user is performing operations, continues during platform-side computation (e.g., data prep jobs running in background), and stops after 5–10 minutes of idle time. This is relevant for the POC efficiency comparison against traditional (non-platform) validation workflows.
+13. What content filters, PII detection rules, and off-topic handling are configured in Bedrock Guardrails for this model?
+14. Are there guardrail instructions embedded in the system prompt in addition to the infrastructure-level Bedrock Guardrails?
+15. Are there any post-processing steps applied to LLM output before it is spoken to the customer (e.g., confidence thresholds, fallback responses, blocked phrases)?
 
----
+**Model Output and Delivery (6.2.3)**
 
-### Session 1 Recap (Vivek)
+16. What does the customer hear in a successful response? Is it a direct spoken answer, an answer with a source reference, or something else?
+17. Are there response length limits or truncation logic for the spoken output?
+18. Are any disclaimers or risk warnings read to the customer?
+19. Can sample outputs (transcripts or recordings) be shared for Validation review?
 
-Vivek briefly recapped what was covered in Session 1: platform architecture layers, project creation, login, and audit trail. He highlighted that the audit trail captures every operation with a diagram showing data transformations, and that audit trail scripts can be downloaded. He also showed the artifact-sharing panel, which tracks datasets, documentation, UDFs, and pipelines created within a project and allows sharing individual artifacts (not just entire projects) with other users who have platform access.
+**Other (6.3 - 6.5)**
 
-**Artifact sharing detail:** When a dataset is shared, the recipient must accept it and add it to a project. The dataset retains its original name but gets a unique suffix ID appended (e.g., `Lacific_data1_6522A1E`). Datasets cannot be renamed after import. This applies to intermediate outputs, documentation drafts, and other artifact types as well.
+20. Were any development adjustments applied during configuration (e.g., prompt iterations, output filters, confidence thresholds)?
+21. Is there any custom Lambda code for this model, or is the deployment entirely AWS-managed through QIC?
+22. What version control and change management procedures are in place for the QIC configuration and system prompt?
 
----
+**N/A Confirmation**
 
-### Statistical Tests Module
-
-The platform offers normality tests, parametric tests, and non-parametric tests. Results display test name, group size, test statistic, and p-value. For normality tests, results are automatically generated at 1%, 2.5%, and 5% significance levels simultaneously.
-
-**Q (team):** Can we set a uniform significance level across all tests? **A:** Some tests allow custom significance level input; others use the built-in 1/2.5/5% default. Custom significance levels can be configured if needed.
-
-**Q (team):** Can we run the same test across all continuous or categorical variables at once? **A:** Yes — multi-select is available. Select all desired variables and submit once.
-
-**Pending deliverable:** Emily requested a complete list of all tests available in each module (EDA, feature engineering, segmentation). Nimbus team (Praveen) committed to delivering this list with descriptions by early the following week.
-
----
-
-### Documentation Module — Detailed Walkthrough
-
-This was the primary teaching segment of the session.
-
-**Creating a document:** Navigate to Documentation module → Create Document → enter name, author, and select either a blank template or a previously uploaded template.
-
-**Placeholders:** Within a document, users create named placeholders (e.g., "Summary Statistics") that serve as designated drop zones for results. Each placeholder holds one result — to show multiple outputs (e.g., 3 tables from one job), create 3 separate placeholders.
-
-**Adding results to documentation — two methods:**
-
-1. From the EDA/test module: open a completed job, click "Add to Document," select the target document and placeholder, add a heading and comment. A green checkmark appears on the job queue item once mapped.
-2. From within the document: use the "Add Resources" tab to browse completed jobs by module and submodule, then drag-and-drop results into the document.
-
-**Key behaviors:**
-
-- If a result is added to a placeholder that already has content, the new result replaces the old one — it does not append.
-- Tables and charts can both be added via drag-and-drop.
-- Only the first table from a multi-table job is pulled when adding from the job queue directly. To get all tables, create separate placeholders for each.
-
-**Auto-updating results (important nuance):**
-
-If individual jobs are added to placeholders manually, rerunning the job creates a new job ID — the document does not auto-update. To enable auto-updating, the jobs must be part of a **workflow (pipeline)**. When a workflow is connected to a document template, rerunning the workflow refreshes all mapped placeholders. If only a subset of jobs needs rerunning, either remove the irrelevant placeholder connections before rerunning, or clone the workflow and modify the clone.
-
-**Q (Ali):** Can both the old and new versions of a result coexist in the document? **A:** Yes — create a separate placeholder for each version.
-
-**Q (Yixia):** Can plots and tables be resized within the platform? **A:** Limited resizing capability exists for images on the platform, but it may not carry through to exports. For full formatting control, export to Word and adjust there.
+23. Several Section 6 template requirements appear not applicable to this model. Can you confirm the following do not apply?
+    - Fine-tuned, distilled, or custom-built LLM (Instruction 7)
+    - Agentic AI framework (Instruction 6)
+    - Graph database (Instruction 4, if QIC uses vector only)
+    - Content-based feature engineering beyond existing article tags (Instruction 6.2.1, if no new features are generated)
 
 ---
 
-### Documentation Templates
+## 3. GenAI Development Template - Section 5 Discussion (5 min, time permitting)
 
-**Uploading a template:** Settings → Documentation Template → Upload. Supported formats: `.md`, `.html`, `.docx`. Templates are **global** — they must be published before they can be used, even by the uploader.
+If the article breakdown from Liz Eisert is available, we would like to begin discussing Section 5 (Development Data). If not available, this will be deferred to the next meeting.
 
-**Template fidelity issue (Duncan):** When the standard MRM validation template (with brand formatting, graphics, headers) was uploaded and then downloaded back from Nimbus in Word format, formatting was stripped — colors, images, and layout were lost. Vivek acknowledged the limitation: the platform's built-in editor does not support full Word formatting fidelity. PDF and HTML exports preserve formatting better than Word. The Nimbus team committed to enhancing the editor in a future version.
+**Data Sources (5.1)**
 
----
+24. What are the source systems for the knowledge base articles (ServiceNow, Salesforce, or both)? Who is the data source owner?
+25. What is the article count for the 24Hr Banking scope, and how are articles distributed across categories or tags?
+26. Are there differences between the articles available in the development/testing environment and the production knowledge base?
+27. What data sources will be used for testing and evaluation (Cyara outputs, SME-curated sets, synthetic data, or a combination)?
 
-### Feature Engineering Module
+**Data Quality (5.2)**
 
-The platform supports numerical transformations (standardization, normalization) and categorical variable transformations (one-hot encoding, base encoding, label encoding, ordinal encoding).
+28. What quality controls exist for the knowledge base articles (e.g., reconciliation against ServiceNow, duplicate detection, staleness review)?
+29. How frequently are articles updated, and what is the synchronization process between ServiceNow/Salesforce and QIC?
+30. Has a coverage analysis been performed to identify gaps in the KB relative to expected customer queries?
 
-**Workflow:** Select operation → select dataset → select transformation type → select variable(s) (multi-select supported) → set parameters (e.g., 0–1 standardization vs. variable standardization) → choose to override existing dataset or create new → Submit.
+**Data Pre-Processing (5.3)**
 
-**Results display:** Before/after histograms, box plots, summary statistics tables, and percentile distributions for each transformation.
+31. Is any preprocessing applied to articles before ingestion into QIC (e.g., HTML stripping, formatting normalization, PII masking)?
+32. Is any preprocessing applied to customer queries before they reach the LLM (e.g., query rewriting, spelling correction)?
+33. If synthetic test data will be generated, what methodology and tools are planned?
 
-**Saving transformed data (important — not automatic):**
+**N/A Confirmation**
 
-1. After a job completes, go to the job queue
-2. Click the dataset tab within the job
-3. Mark the output as "Save"
-4. Then mark it as "Ready to Use"
-5. Only then does it appear in the data management module and dataset selector for subsequent operations
-
-This is intentional — not all intermediate outputs need to be saved, so the platform gives users control. However, all outputs remain accessible in the job queue regardless of save status.
-
----
-
-### Sampling & Segmentation Module (started, not completed)
-
-Vivek began demonstrating the sampling and segmentation module, which includes visual imbalance assessment, sampling, resampling, splitting, and time series sampling. The session ended during this demonstration.
-
----
-
-### Issues Noted — Session 2
-
-- Some users missing from collaborative project user list (e.g., Yixia visible in shared project but not collaborative project)
-- UDF debug mode exists in UI but is non-functional — built-in Jupyter not approved at US Bank
-- Platform latency on simple operations (2-line print takes noticeable time in job queue)
-- Yixia unable to access platform entirely (login/browser issue)
-- Complete list of tests per module with descriptions never delivered during training window
-- Template formatting (brand standards, colors, graphics, images) stripped on Word round-trip upload/download
-- Documentation placeholder system only pulls first table from multi-table jobs — requires workaround of creating separate placeholders
-- Plot/table resizing in platform may not carry through to exports
-
----
-
-## Session 3 — Variable Reduction & Model Estimation
-
-**Date:** Sunday, April 13, 2026
-**Presenter:** Vivek (Solytic/Nimbus)
-**Coordinator:** Jeeta (Satyajeeta Misra)
-**Attendees:** Ali, Peter, Sriya, and others from MRM validation team
-
----
-
-### Pre-Session Q&A (Carryover Issues)
-
-**Chart auto-scale (Ali):** After zooming/panning a chart, there is an auto-scale button (next to the minus sign) that resets the view to the original state.
-
-**Collaborative project user list (Ali):** Issue from Session 2 still unresolved — Yixia still cannot be added to Ali's collaborative project.
-
-**Job queue naming clarity (Ali):** Job queue item names are not descriptive enough to identify what operation was performed, which variables were involved, or which dataset was used. Vivek pointed to the Audit Trail (Project Details → Audit Trail) as a secondary source, but acknowledged the tree diagram there does not currently redirect to the job queue as intended. The redirect functionality is not enabled. Nimbus team will take the feedback to development for improved job queue metadata.
-
-**Data save errors on transformations (Ali):** Ali consistently received errors when trying to save transformed datasets as new datasets. Vivek committed to checking with the technology team.
-
-**UI design feedback (Ali):** Three issues raised: (1) Sampling module does not allow custom naming for saved datasets (generates random names instead), (2) Submit button appears both before and after task completion, which is misleading — should show only Submit before execution and only Save after, (3) Data versioning lacks lineage metadata (who generated, when, source data, what transformations were applied). Vivek acknowledged data versioning only tracks the last executed version and committed to taking the request to the team.
-
-**Compute logging / Spark node usage (Sriya):** Asked whether users can generate logs showing compute usage (CPU, Spark nodes) per job. Vivek confirmed the AKS (Azure Kubernetes Service) integration is still in development phase — core changes to the Spark cluster are underway. Sriya suggested attaching compute summaries to job queue items, which Nimbus team agreed to consider.
-
-**Text string parsing (team member):** Platform cannot natively parse long text strings within datasets. Jeeta clarified that this can be done via UDF Manager (write custom Python code), but no built-in function exists. Jeeta recommended expanding the UDF training to two sessions given the expected volume of questions.
-
-**Dataset recalibration stuck (Ali):** Ali attempted to set date and target columns on the shared training dataset; the recalibration process ran for over an hour and locked the dataset. Vivek confirmed it was stuck and would check from the backend. The workaround is to use the "Recalibrate and Reset" option in the data management module to stop stuck operations, then right-click to delete if needed.
-
----
-
-### Variable Reduction Module
-
-Available methods: missing value analysis, PCA, high correlation, random forest, clustering, information value (IV), forward selection, backward selection, LASSO, Ridge, stepwise.
-
-**Workflow:** Select method → select dataset → set target variable → set threshold (e.g., correlation > 0.13) → Submit. Review results showing selected/rejected variables with correlation values. Users can manually override selections (add/remove variables) before proceeding. Click "Proceed" to move selected variables to the Variable Finalization module.
-
-**Variable Finalization module:** Aggregates results across all methods run. Displays a side-by-side comparison table showing which variables were selected by which method. Users can finalize their variable list and create a new dataset for model estimation. The finalized dataset must be marked "Ready to Use" before it can be used in subsequent modules.
-
-**Dataset locking:** Only one operation can run on a dataset at a time. If a previous operation is running, new submissions will fail until the dataset is released.
-
-**Q (team member):** Can I iterate variable reduction across all segments of a segmented dataset? **A:** Create a workflow using these methods, then change the dataset input for each segment. For large numbers of segments (e.g., 100), a UDF function can be added to the workflow to loop through segments. Detail deferred to the pipeline/workflow session.
-
-**Error noted (Ali):** Random forest variable reduction threw a "string to float" conversion error — likely caused by passing uncoded string variables directly. Vivek confirmed string variables must be converted (encoded) before being passed to model-based methods.
-
----
-
-### Model Estimation Module
-
-**Modeling types:** Classification (logistic regression, decision tree, artificial neural network, random forest, XGBoost), Regression (OLS, XGBoost, random forest), Time Series (ARIMA and others).
-
-**Workflow:** Select modeling type → select one or multiple techniques → select target variable → select/exclude variables → select metrics (AUC, KS, precision, recall, etc.) → set prediction threshold → select training dataset → optionally select test dataset (not mandatory) → set hyperparameters per technique → enable auto-save if desired → Submit.
-
-**Key behaviors:**
-
-- Multiple techniques within the same modeling type (e.g., all three classification methods) run as a single job and produce results in one job queue item.
-- Cross-type comparison (regression vs. classification) is not natively supported — requires a UDF layer.
-- Model comparison toggle generates side-by-side AUC, KS, and other metric charts and tables across all selected techniques.
-- Coefficients, p-values, t-statistics, and feature importance tables are available for logistic regression, OLS, ARIMA, and other parametric methods.
-- Test dataset is created via the Sampling module (train/test split with ratio) — the split should be done before model estimation.
-
-**Saving models:** Enable the "Add to Save" option during model initiation, provide a name and description. Saved models appear in the Inventory Management module with pickle files, environment files, and version history. Models must be saved to appear in Model Testing. An auto-save option exists but requires submitting a separate operation to trigger if not enabled at initial run time.
-
-**Q (Ali):** Only a subset of hyperparameters are exposed in the UI — can all parameters be made available? **A:** Additional parameters can be configured; current UI shows the most commonly used ones. Backend defaults are applied for unexposed parameters.
-
-**Q (Ali):** Suggested adding train/test split directly within model estimation to improve traceability and prevent data leakage. **A:** Vivek acknowledged the suggestion but noted it might disrupt the modular workflow structure; will check with tech team.
-
-**Q (team member):** Can UDF access model artifacts (coefficients, predictions, residuals) from saved models? **A:** Yes — pickle files and all associated artifacts are stored in Inventory Management and accessible from UDF.
-
-**Q (Ali):** During model estimation, dataset should not be locked for read-only operations (fitting, predicting) — only for data manipulation. **A:** Vivek agreed and will check if model estimation can be configured to allow concurrent jobs on the same dataset.
-
----
-
-### Inventory Management Module (Overview)
-
-**Dashboard:** Total models, active models, active validations, findings count, model risk distribution (high/low/medium), distribution by business unit, model technique, and source type (external/internal/logic-based). Validation status tracking (started, in progress, past due, completed). Top 10 models by validation time and frequency.
-
-**Model registration — two paths:**
-
-1. Internal: Models saved from Model Estimation auto-populate into inventory with pickle files, environment configs, version history.
-2. External: Register manually by entering model name, ID, owner, source type (external file, API-based, logical), libraries, technique, risk rating, version, and uploading pickle/model files.
-
-**Model detail view:** Core attributes, associated project, model files (downloadable for local replication), version control, linked datasets (training, validation), linked documentation, linked workflows/test suites, operation history. Deployment option exists but is not enabled in current environment.
-
----
-
-### Model Testing Module (Partial)
-
-**Ongoing Comparison:** Select a saved model → select training dataset (auto-populated based on model) → select monitoring dataset(s) → select test case → Submit. Results show charts (AUC, ROC, KS, feature importance on train vs. monitoring data) and tables with RAG (red/amber/green) indicators based on test case thresholds. Test results tab shows pass/fail for each defined threshold.
-
-**Test Case Manager:** Define named test cases with metrics and RAG thresholds. Example: AUC green > 0.8, amber 0.6–0.8, red < 0.6. Available metrics include classification (AUC, KS, precision, recall, F1) and regression (RMSE, MAE, MAPE, MSE) — regression metrics require scrolling down in the selector. Bug noted: entering "0.8" (with leading zero before decimal) throws an error; must enter ".8" instead.
-
-**Additional testing operations:** Classification plots, AUC/lift curves, assumption testing (regression-specific), model comparison (side-by-side with test cases), backtesting (classification and time series).
-
-**Q (team member):** Does backtesting support multi-period forecasts (e.g., 13 quarters ahead for CCAR)? **A:** Vivek was unsure — the platform has start/end period inputs but may not natively support rolling multi-step forecasting. Likely requires a UDF. Vivek committed to checking the requirement.
-
-**Sensitivity analysis:** Select a model → select dataset → select variables to shock → choose shock type (percentage or standard deviation) → Submit. Shows positive and negative shock impact on model output. Demo results were unclear due to data quality issues.
-
-**Deferred to Session 4:** Scoring, scaling, fairness assessment, drift analysis, model recalibration/forecasting, and model interpretation.
-
----
-
-### Issues Noted — Session 3
-
-- Collaborative project user list still broken (Yixia, carried from Session 2)
-- Job queue naming convention not descriptive enough — no variable/dataset metadata visible
-- Audit Trail tree diagram does not redirect to job queue as designed (functionality not enabled)
-- Data save errors when creating new datasets from transformations (persistent across multiple attempts)
-- Sampling module generates random names for saved datasets — no custom naming option
-- Submit/Save button UX is misleading (Submit appears after job completion; Save appears before)
-- Data versioning lacks lineage metadata (who, when, source, transformations)
-- No compute usage logging per job (AKS/Spark integration still in development)
-- No built-in text string parsing capability
-- Dataset recalibration can get stuck indefinitely, locking the dataset with no job queue entry to cancel
-- Leading zero in Test Case Manager threshold entry (e.g., "0.8") throws an error — must enter ".8"
-- Multi-period forecasting for CCAR backtesting unclear — may require UDF
-- Dataset locking prevents concurrent model estimation jobs even for read-only operations
-- Only a subset of model hyperparameters exposed in UI — backend defaults not visible to user
-- Sensitivity analysis demo produced unclear/broken plots due to data quality
-- Train/test split is in a separate module from model estimation — no traceability link between the two
-
----
-
-## Session 4 — Model Testing (cont.), Inventory Management, Task Manager
-
-**Date:** Tuesday, April 15, 2026
-**Note:** Transcript provided was a duplicate of Session 3. Summary not available — session content assumed to cover the deferred items from Session 3: scoring, scaling, fairness assessment, drift analysis, model recalibration/forecasting, model interpretation, plus deeper Inventory Management and Task Manager workflows.
-
----
-
-## Session 5 — UDF Manager, Pipeline, Trigger Management
-
-**Date:** Wednesday, April 23, 2026
-**Presenters:** Varun and Vivek (Solytic/Nimbus), Shaysia (US Bank Technology)
-**Coordinator:** Jeeta (Satyajeeta Misra)
-**Attendees:** Ali, Ben, Peter, Duncan, Sriya, Jia-Ling (Jenning), and others from MRM team
-
----
-
-### Agenda
-
-UDF Manager deep-dive, Azure ML integration and Nimbus Agent setup, pipeline workflows (demo of pre-built pipelines), trigger management, inventory, and Task Manager. Model interpretation deferred to Session 6 (use case demo with Model 5856).
-
----
-
-### UDF Manager — Detailed Walkthrough
-
-**Creating a UDF:** Click "Create UDF" → enter name → add tags (predefined tags map to platform modules, e.g., "Preliminary Steps," "Treating Outlier") → optionally check "Show as user-defined function in the operation bar" (makes the UDF appear as a selectable operation within the tagged module's no-code workflow) → define arguments → Submit.
-
-**Arguments (function inputs):**
-
-Arguments define what inputs the UDF will accept from the Nimbus platform. Each argument has a name, type, value, and description.
-
-Argument types available: Dataset (any dataset in the active project), Model (internal or external model objects), Console File (supports CSV, JSON, TXT, pickle, YAML, zip, and many other formats — for unsupported formats, convert to zip and unzip in code), Choice (user-defined dropdown options, e.g., "low risk / medium risk / high risk" — enter each option and press Enter to add).
-
-Multiple arguments can be defined (no limit). Arguments are effectively function parameters — they determine what the UDF receives as input each time it runs.
-
-**Q (team member):** Can we pass Python dictionaries or complex objects as arguments? **A:** Not directly as an argument type, but complex objects can be serialized to JSON or pickle and uploaded as console files. The UDF editor functions as a Python notebook, so any Python object created in code works normally. Vivek confirmed that extensions can be added if needed.
-
-**UDF code editor:** Opens a notebook-like interface with multiple cells. Code can span multiple cells — outputs from all cells are collected. The `hardrive` package is used to fetch argument data into variables (e.g., `df = hardrive.fetch_argument("dataset_arg")`). Code in the main file executes as a standard Python notebook. Requirements.txt file specifies package dependencies.
-
-**Running a UDF:** Right-click the UDF name → Run → input form appears with fields for each defined argument → select CPU allocation (high/medium/low — maps to Kubernetes cluster worker configuration) → select kernel (Python) → Submit. Job appears in the job queue. Results include tables, charts, data outputs, text, and downloadable console files.
-
-**UDF visibility in modules:** If the "show in operation bar" checkbox is enabled and a module tag is selected, the UDF appears as a selectable operation within that module (e.g., appears under EDA → Preliminary Steps). This allows UDFs to be integrated into the no-code workflow and reused as pipeline nodes.
-
-**UDF details page tabs:** Basic Details (name, tags, working directory), Version History (commit tracking, file-level change diffs), Jobs (execution history, job comparison), Arguments, Code (editor with main file, requirements.txt, etc.).
-
-**Debug mode:** Exists in the UI but is not functional in the current US Bank deployment. The internal editor (Nimbus's built-in Jupyter) is not available because Jupyter Hub was not deployed for US Bank. The Core Editor (separate from Jupyter) is available and being enabled — Praveen confirmed it would be ready by the next session. Debug mode will work once Azure ML Studio is fully integrated.
-
-**Q (Ali):** Why must we predefine argument types when Python is dynamically typed? **A:** Design choice to provide users a structured input form. For flexibility, the "Choice" argument type allows arbitrary user-defined options.
-
----
-
-### Azure ML Integration & Nimbus Agent Setup
-
-This section covered the one-time setup required to connect Azure ML notebooks to the Nimbus platform via the Nimbus Agent.
-
-**Why this is needed:** Nimbus's built-in IDE (Jupyter Hub) was not approved within US Bank. Azure ML Studio is the approved alternative. The Nimbus Agent creates a bridge: users can write code in Azure ML notebooks and push UDFs, commits, and results to the Nimbus platform.
-
-**When this is needed:** Only required if users want to write custom Python code, use Spark clusters, or work with models hosted on Azure ML. For simple no-code workflows or the Nimbus Core Editor (once enabled), this setup is not required.
-
-**Setup steps (one-time per user):**
-
-1. Log into Azure ML portal → verify NimbusDev01 workspace is visible → confirm personal compute instance is running (Manage → Compute → check name in table)
-2. Open terminal from the Notebooks tab (navigate to personal folder → three dots → Open Terminal, or click the Terminal button)
-3. Change directory to personal user folder
-4. Copy setup files (requirements.txt, Nimbus Agent, conda dependencies YAML) — verify with `ls` command showing 3 files
-5. Generate JFrog identity token (US Bank's artifact repository for secure package downloads) — log into JFrog platform, generate and save token
-6. Edit `.bashrc` file via `nano` to add JFrog credentials (preferred ID and token) at three locations in the file — save with Ctrl-O, exit with Ctrl-X
-7. Source the `.bashrc` file
-8. Create conda environment with a chosen kernel name (e.g., "nimbus")
-9. Install required packages via `pip install` using the requirements.txt
-10. Activate the conda environment
-
-**Issues encountered during session:** Multiple attendees had terminal access failures (reconnection errors, compute instances not appearing). Shaysia restarted compute instances for some users. Valerie and others were missing compute instances entirely — taken as a follow-up to add. The Langsmith package caused installation errors requiring a version change (0.1.32). Requirements.txt was blank for one user (Jenning).
-
-**Nimbus Agent commands (demonstrated by Varun):**
-
-- `nimbusagent -h` — list all available commands
-- `nimbusagent initagent --org "US Bank"` — log into Nimbus account via SSO
-- `nimbusagent createudf <name> <project_id>` — create a new UDF from Azure ML, automatically appears in Nimbus
-- `nimbusagent initializeudf <name> --project_id=<id>` — pull an existing Nimbus UDF into Azure ML for editing
-- `nimbusagent commitchanges <udf_name> "<message>"` — commit code changes
-- `nimbusagent savechanges <udf_name>` — push committed changes to Nimbus (version history updated)
-- `nimbusagent createtask <udf_name>` — create a pending task in Nimbus job queue
-- `nimbusagent uploadresults <task_name>` — push execution results from Azure ML to Nimbus (completes the pending task)
-- `nimbusagent deinitializeudf` — remove a fetched UDF from local working directory
-- `nimbusagent stopagent` — log out
-
-Tasks created via the agent show as "UDF Agent Task" in the job queue (vs. "UDF Manager Task" for tasks run natively in Nimbus).
-
----
-
-### Key Discussion: Setup Complexity & Analyst Experience
-
-**Ben (Credit Risk):** Raised concerns about the complexity of the setup process for analysts unfamiliar with terminal/command-line work. Asked whether each analyst would need to do this individually and whether there would be additional training on actual functionality (vs. setup). Jeeta confirmed the setup consumed more time than planned.
-
-**Ali:** Noted that the setup mirrors what any US Bank analyst must do for local Python environments (JFrog artifactory, conda environments) and suggested two alternatives: (1) Admin pre-configures everything so users just log in, or (2) Create a shared kernel with all packages pre-installed — users just select the kernel without any setup. Referenced how the MRM automation team handles this on Power9 (shared kernel, no per-user setup).
-
-**Jeeta (Maxim):** Committed to taking this as an action item to discuss with Shaysia, Vivek, and US Bank Technology (Titus) — goal is to automate setup or provide a shared kernel so individual analysts don't need to run terminal commands.
-
-**Clarification on when Azure ML setup is needed vs. not:**
-
-- Azure ML setup IS needed for: custom Python code on Spark clusters, models hosted on Azure ML, heavy computation
-- Azure ML setup is NOT needed for: no-code workflows, simple models, using the Nimbus Core Editor (once enabled)
-- Core Editor (internal to Nimbus, no Azure dependency) will be demonstrated in the next session — Praveen confirmed it's being enabled and checked with Titus
-
-**Ben's team (Credit Risk):** Primarily uses SAS for validation. Jeeta noted SAS connectivity to Nimbus is still being figured out, but once available, Ben's workflow would be simpler. Ben confirmed his team's Python needs are basic (logistic regression).
-
----
-
-### Pipeline Workflows
-
-Pre-built pipelines exist and were referenced but **not demonstrated** due to a deployment issue that needed to be resolved with Titus. Varun confirmed working examples exist and could be showcased (approximately 30 minutes needed). Deferred to Session 6.
-
----
-
-### Issues Noted — Session 5
-
-- Azure ML setup consumed the entire session — almost no one completed the full setup during the live training
-- Multiple terminal access failures (reconnection errors, compute instances not responding after restart)
-- Missing compute instances for several users (Valerie, others) — not provisioned ahead of training
-- Langsmith package version in requirements.txt caused install failures (required manual version change to 0.1.32)
-- Requirements.txt was blank for one user (Jenning) — file content not populated
-- Per-user Azure ML setup process is not scalable for enterprise deployment — requires terminal commands, JFrog tokens, nano editing, conda environments
-- No shared kernel option exists — each user must independently configure their environment
-- Nimbus Core Editor still not available (was promised for this session)
-- Debug mode still non-functional
-- Pipeline demo could not be shown due to deployment issue blocking pipeline execution
-- SAS connectivity to Nimbus not yet available (relevant for Credit Risk team)
-- CPU selection in UDF (high/medium/low) maps to Kubernetes cluster workers, not Azure ML compute — relationship between the two is unclear
-- Nimbus built-in Jupyter Hub was not deployed because it was "not approved" at US Bank — but the Core Editor (which was approved) was also not yet available, leaving no functional code editor for 5 of 6 training sessions
-
----
-
-## Session 6 — Model Use Cases (Model 5856)
-
-**Date:** ~Late April / Early May 2026
-**Presenters:** Hira and Vivek (Solytic/Nimbus), Varun
-**Coordinator:** Jeeta (Satyajeeta Misra)
-**Attendees:** Ali, Ben, Duncan, Jordan, and others from MRM validation team
-
----
-
-### Agenda
-
-End-to-end model validation use case demonstration using Model 5856 (credit card PD model), Nimbus Core Editor (internal editor) walkthrough, Pipeline Manager workflow creation and execution, and results comparison against developer documentation.
-
----
-
-### Nimbus Core Editor (Internal Editor) — First Live Demonstration
-
-This was the first session where the internal editor was functional and demonstrated. Unlike the Azure ML setup from Session 5, the Core Editor requires no external configuration — it is built into the Nimbus platform.
-
-**How it works:** Create a UDF → define arguments → go to the Code tab → double-click `main.ipynb` file → click "Debug" button → the internal editor opens (installs required components on first launch). The editor is a Jupyter-like notebook interface where users can write, test, and execute Python code directly. Supports Python 3.10 (with R also available via dropdown). Pre-installed packages include pandas, matplotlib, scikit-learn, and other common libraries. Additional packages can be specified in `requirements.txt` and auto-install on next run.
-
-**Key advantage over Azure ML setup:** No compute instance configuration, no terminal commands, no conda environments, no JFrog tokens. Users just open the editor, write code, and run it. Significantly more lightweight and accessible for analysts.
-
-**Q (Duncan):** How can I see what packages are pre-installed and their versions? **A:** Vivek committed to providing a list of pre-installed packages. Additional packages can be added via `requirements.txt` or installed from the backend by the Nimbus team.
-
-**Q (Ali):** If I edit an argument name after UDF creation, does the code update automatically? **A:** No — argument names in the code must be manually updated to match.
-
----
-
-### UDF Arguments — Clarification
-
-Jeeta requested a thorough re-explanation of arguments. Key points clarified:
-
-Arguments are function inputs that define what data or artifacts the UDF receives from the Nimbus platform each time it runs. Argument types include: Dataset (any dataset in the active project), Model (internal or external model objects), Console File (CSV, JSON, pickle, YAML, zip, etc.), Column (a specific field from a dataset), Choice (user-defined dropdown options), and numeric/string values.
-
-Arguments enable reusability: the same UDF can be rerun with different datasets by simply changing the argument value, without modifying code. Multiple arguments are supported (no limit). Functions can call other functions, and complex objects can be passed within the code itself since the editor is a standard Python notebook.
-
-**Q (Jordan):** Can UDFs connect to external APIs (e.g., Azure OpenAI) and use artifacts beyond what's in `requirements.txt` — such as sentence transformer weights, NER models, or direct API calls? **A:** Yes — the platform sits on US Bank Azure, so API connections are possible. Users provide API keys within the UDF code. Data can be fetched from or pushed to external APIs, dashboards, or reporting tools from within UDFs.
-
-**Q (Jordan):** Can I import code from an internal US Bank repository (GitLab)? **A:** The "Import Code" functionality exists for GitHub and Bitbucket but is currently disabled in the US Bank environment. GitLab support needs to be verified and enabled.
-
-**Q (Jordan):** Can you pass custom Python classes between UDF functions (e.g., passing a class object from one module to another)? **A:** Classes can be defined and used within a single UDF (the editor is a standard Python notebook). For passing between UDFs in a pipeline, objects can be serialized via console files (pickle, JSON). Vivek committed to checking if there are any limitations on class writing and passing between pipeline nodes.
-
----
-
-### Collaborative Project — Locking and Version Tracking
-
-**Issue encountered (Ali):** Received "artifact is being accessed by another user" error when trying to use a UDF in a collaborative project. Root cause: if a user closes the browser tab without properly exiting the UDF, the artifact remains locked.
-
-**Resolution:** Use the "Locked Artifacts" icon (top right notification bar) → right-click on the locked UDF → "Unlock Artifact." The dataset then becomes accessible.
-
-**Version tracking in collaborative projects:** UDF Manager → Version History tab shows all commits with the name of the user who made each change (author column), timestamps, and file-level diffs. Currently, the "Created By" field in audit trail shows the project owner's name rather than the actual user — an improvement is in progress to show the actual executing user.
-
-**Data versioning in collaborative projects:** When multiple users transform the same dataset, the platform creates versions rather than overwriting. The original data stays intact. Operations by all users are tracked in job queue logs and audit trail.
-
-**Audit logs — two levels:**
-
-1. Organization-wide: Settings → Audit Logs — shows every action by every user across all projects (action type, timestamp, project ID, user).
-2. Project-level: Project Details → Audit Trail — shows operations within a specific project, with user attribution.
-
-Current limitation: audit logs show basic information (action, timestamp, user) but not detailed compute usage, package information, or execution details. Enhanced logging (including CPU utilization) is in development for a future release.
-
----
-
-### Pipeline Manager — Detailed Walkthrough
-
-**Creating a pipeline:** Pipeline Manager → Create Pipeline → enter name and description → Submit. A unique pipeline ID is generated.
-
-**Adding nodes — two methods:**
-
-1. From the UDF Manager: open a completed job in the job queue → click "Add Job to Pipeline" icon → name the node → select which pipeline → Submit.
-2. From within the Pipeline Manager: Edit Pipeline → click "Add New Node" icon → name the node → select module (UDF Manager, or any no-code module like EDA, Feature Engineering, etc.) → select the specific UDF/operation → select which job version → Submit.
-
-**Linking nodes:** Drag from the output connector of one node to the input connector of the next node. This creates the execution dependency and data flow.
-
-**Mapping outputs between nodes:** Click on a downstream node → under "Output from Previous Node," select which dataset or result from the upstream node should be passed as input. This mapping is persistent — once set, rerunning the pipeline automatically flows the correct data through all nodes. To rerun the entire workflow on new data, only the first node's input needs to change.
-
-**Running a pipeline:** Save Pipeline (validates the workflow) → click "Run Pipeline" icon → optionally enable remote worker → Submit. Execution history is viewable via the "View Execution History" icon. Successfully completed nodes turn green; click any node to view its results.
-
-**Saving results:** Within any node's results, datasets can be marked "Ready to Use" via the toggle button, making them available in the data management module. Dataset names can be predefined in the UDF code.
-
-**Limitation — partial pipeline execution:** Currently, you cannot selectively run a subset of nodes within an existing pipeline (e.g., skip nodes 1–3 and start from node 4). Workarounds: (1) run the specific UDF independently outside the pipeline, or (2) create a shorter pipeline starting from the desired node with direct input. Vivek acknowledged this as an improvement to consider.
-
----
-
-### Model 5856 Use Case — End-to-End Validation Demonstration
-
-**Model overview:** Logistic regression model predicting probability of credit card default in the next month. Variables include credit limit, repayment history, billing amounts, and payment amounts. Target variable: default/no-default.
-
-**Validation workflow implemented in Nimbus (10 nodes):**
-
-1. Data Ingestion / Preprocessing — handle missing values, duplicates, empty columns
-2. Exploratory Data Analysis — data quality, completeness, accuracy checks
-3. Random Forest Feature Selection — identify important variables, reduce dimensionality
-4. Weight of Evidence (WoE) Transformation — ensure monotonic relationship with target
-5. Information Value (IV) Filtering — keep strong predictors, remove weak ones
-6. Correlation Filtering — remove highly correlated variables to avoid multicollinearity
-7. Recursive Feature Elimination — iteratively refine optimal feature set
-8. Logistic Regression Model — fit model, interpret coefficients, validate assumptions
-9. Benchmark Models — alternative model comparison
-10. Performance Testing — AUC, KS, Gini, PSI, CSI, rank ordering, lift curves
-
-**Results comparison against developer documentation:**
-
-- AUC on training data: Nimbus = 0.75, Documentation = 0.75 ✓
-- AUC on out-of-time sample: Nimbus ≈ 0.74, Documentation ≈ 0.74 ✓ (close match)
-- KS statistics: similar values on both train and test data
-- **Coefficients showed discrepancies:** Example — "Total Utilization FIN Accounts 36 months" coefficient was 0.61 on Nimbus vs. 0.71 in documentation. Another feature showed 1.032 vs. 1.05.
-
-**Discrepancy explanation:** Vivek noted the out-of-time sample had a ~10% higher bad rate than expected, suggesting a data discrepancy. Additionally, default model iteration parameters and feature engineering differences may contribute. Vivek stated that for other clients, coefficients have matched to 3–4 decimal places, so this should be resolvable.
-
-**Jeeta's directive:** Coefficient accuracy needs to match to at least the first or second decimal place for the POC to be credible. Follow-up offline to investigate data and parameter alignment.
-
----
-
-### Additional Q&A
-
-**Q (Ben):** Can I do exploratory segmentation analysis — test different segmentation variables, quickly build segmented models, and compare against an overall model? **A:** Yes — use the EDA module for distribution analysis on specific variables, then segment and build models. For custom segmentation logic, use UDF Manager. Custom segmentation operations can later be published as no-code operations for reuse.
-
-**Q (Ben):** Was there a comparison between running EDA via UDF code vs. using Nimbus's built-in no-code EDA? **A:** Not done in this session. Vivek committed to creating a comparison pipeline using no-code environment to show how results compare with the UDF-coded version.
-
-**Q (Ben):** Platform crashed — white screen, then "no healthy upstream" error on reload. **A:** Caused by a deployment pipeline that the tech team had started during the session. Not a user-side issue.
-
----
-
-### Issues Noted — Session 6
-
-- Model 5856 coefficient discrepancies (e.g., 0.61 vs. 0.71) — unresolved; attributed to data differences but not yet reconciled
-- GitLab repository connection not available — only GitHub/Bitbucket supported, both inaccessible at US Bank
-- Class passing between UDF pipeline nodes — limitations unknown, Vivek checking
-- Cannot run a partial pipeline (start from node N) — must rerun entire pipeline or create a separate shorter pipeline
-- Collaborative project artifact locking — if user closes browser without exiting UDF, artifact remains locked until manually unlocked
-- Audit trail "Created By" shows project owner name, not actual executing user, in collaborative projects
-- Audit logs lack detailed information (no compute usage, package list, execution trace)
-- No pre-installed package list provided for the Core Editor environment
-- Platform crashed during session ("no healthy upstream") due to concurrent deployment pipeline
-- Editing argument names after UDF creation does not update the code — manual sync required
-- No comparison done between no-code EDA and UDF-coded EDA — unclear if results are equivalent
-- Documentation mapping (pipeline results → validation report template) not yet demonstrated
-
----
----
-
-## Notes for Reviewers
-
-This document summarizes the content, Q&A, and issues observed during Nimbus Uno Training Sessions 1–6. It is intended as a factual reference for anyone on the MRM team who needs to catch up on what was covered, what was demonstrated, and what questions were raised.
-
-**Sessions with incomplete coverage:**
-
-- **Session 1** — No transcript available. Topics inferred from Session 2 references.
-- **Session 4** — Transcript provided was a duplicate of Session 3. If you have access to the Session 4 recording, please add notes for the deferred topics: scoring, scaling, fairness assessment, drift analysis, model recalibration/forecasting, and model interpretation.
-
-**Issues noted per session** reflect what was observed at the time. Some may have been resolved since. They are included so the team has a shared record of what was encountered during training.
-
-**GenAI capabilities** are not covered in this document. Nimbus has GenAI features that are not yet activated in the US Bank environment. The 4/17 team discussion and 11 questions sent to the Nimbus team address that area separately.
-
-If you find inaccuracies or want to add observations from your own experience with the platform, please edit with track changes or add comments.
-
-**Prepared by:** Jordan Low, AI COE / MRM
-**Last updated:** May 2026
+34. Several Section 5 template requirements appear not applicable to this model. Can you confirm the following do not apply?
+    - Foundation LLM training data details (proprietary Anthropic model, no U.S. Bank training data)
+    - Fine-tuning or distillation data sources
+    - Data partitioning splits (training, holdout, out-of-time)
+    - Upstream feeder models other than Nova Sonic for STT
