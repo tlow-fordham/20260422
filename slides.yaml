@@ -1,111 +1,95 @@
-# Model 7637 - Early Engagement Meeting Agenda
+# Model 7637 - Early Engagement Meeting Minutes
 **Date:** May 4, 2026
 **Duration:** 30 minutes
 
 **Attendees:**
-- MRM Validation: Xinyu Wu, Jordan Low, Aditi Pandey, Jinjun Tong, Mehdi Mafi
+- Model Owner / Platform: John Lorence, Baloo Narayanan, Scott Hekman
 - MRG: Sana Ahmed
-- Model Owner: John Lorence
-- Technical: Baloo Narayanan, Scott Hekman
+- MRM Validation: Xinyu Wu, Jordan Low, Aditi Pandey, Jinjun Tong, Mehdi Mafi
 
 ---
 
-## 1. Action Item Follow-Up (10 min)
+## 1. Action Item Follow-Up
 
+**Article breakdown and suitability review (John)**
+- John was out the prior week and has not yet connected with Liz Eisert
+- Liz had previously mentioned that a set of articles is already designated as customer-facing, which may serve as a starting point
+- John will work on setting up the coordination and provide an update at the next meeting
 
-Status updates on outstanding items from the April 6 meeting:
+**LLM hyperparameters (Baloo)**
+- Baloo confirmed that Claude Haiku 4.5 hyperparameters (temperature, context window, max tokens, conversation turns) are not configurable through the Connect AI platform
+- All values are AWS-managed defaults and are not exposed to the solution layer
 
-- John: Has the article breakdown by business line been obtained from Liz Eisert? Are image-containing articles identified?
-- John: What is the status of the BL review of article suitability for customer-facing use?
-- Baloo: Have the Claude Haiku 4.5 hyperparameters (temperature, max input tokens, max output tokens) been confirmed with AWS?
-- Baloo: Can the system prompt, QIC configuration, and guardrail configuration be shared?
-- Baloo: Has vendor documentation or spec sheets for Cyara and DeepEval been obtained?
-- John and Baloo: What is the current progress on the three documentation templates (GenAI Development Template, Implementation Framework, Ongoing Monitoring Plan)?
-- Have SMEs begun developing test cases for Cyara?
+**System prompt, QIC configuration, guardrail configuration (Baloo)**
+- Not discussed; still outstanding. These artifacts may become available once Validation has access to the QIC platform
+- Baloo requested that Jordan send a list of team members needing UAT access to the QIC platform for 7637; list was sent on 5/4
 
----
+**Vendor documentation for testing tools (Baloo / Scott)**
+- Cyara is an IVR and call flow testing platform that operates deterministically (step-based), not probabilistically
+- Cyara has an AI testing module, but U.S. Bank has not purchased it
+- Scott will share Cyara documentation (white paper or website materials) so MRM can understand the platform's capabilities
+- DeepEval is open source with no vendor contract; U.S. Bank installed it with AWS assistance for agent-based testing
+- Cyara may not be used for this model; DeepEval is the likely automated evaluation tool
 
-## 2. GenAI Development Template - Section 6 Discussion (15 min)
-
-To support the October 30 production timeline and the 12-week validation window, we would like to discuss Section 6 (Model Design and Construction) of the GenAI Development Template. The questions below follow the template structure. Where items are not applicable, a brief confirmation is sufficient.
-
-**Model Framework (6.1.1)**
-
-1. Can you confirm the component stack: Claude Haiku 4.5 for reasoning/generation, Nova Sonic for STT/TTS, QIC for orchestration and retrieval, Bedrock Guardrails for content filtering?
-2. Were alternative LLMs or frameworks evaluated before selecting the current stack? If the selection followed a standard platform decision, a brief statement is sufficient for the template.
-
-**Retrieval and Knowledge Base (6.2.1, 6.2.2, 6.2.4-5)**
-
-3. Are the article tags from ServiceNow/Salesforce used as metadata filters in the retrieval pipeline, or is retrieval purely semantic?
-4. What is the underlying retrieval index technology within QIC? Is it a managed vector store, and is the specific technology or version known?
-5. What is the chunking strategy for ingested articles (e.g., fixed-size, recursive, semantic)? Are the chunk size and overlap configurable?
-6. What embedding model does QIC use for this deployment? Are the model name, version, and embedding dimensions known?
-7. What is the retrieval algorithm (sparse, dense, hybrid)? Are there relevance thresholds or reranking steps before the final context is passed to the LLM?
-8. How many chunks are retrieved, and how many are used for response generation?
-9. What are the procedures for updating the retrieval index when articles are added, modified, or retired in ServiceNow/Salesforce?
-
-**LLM Configuration and System Prompt (6.2.2)**
-
-10. What are the confirmed hyperparameter values (temperature, max input tokens, max output tokens)?
-11. What is the prompt input limit and context window for the Claude Haiku 4.5 deployment?
-12. Are there output constraints such as maximum response length or truncation handling?
-
-**Guardrails (6.2.2)**
-
-13. What content filters, PII detection rules, and off-topic handling are configured in Bedrock Guardrails for this model?
-14. Are there guardrail instructions embedded in the system prompt in addition to the infrastructure-level Bedrock Guardrails?
-15. Are there any post-processing steps applied to LLM output before it is spoken to the customer (e.g., confidence thresholds, fallback responses, blocked phrases)?
-
-**Model Output and Delivery (6.2.3)**
-
-16. What does the customer hear in a successful response? Is it a direct spoken answer, an answer with a source reference, or something else?
-17. Are there response length limits or truncation logic for the spoken output?
-18. Are any disclaimers or risk warnings read to the customer?
-19. Can sample outputs (transcripts or recordings) be shared for Validation review?
-
-**Other (6.3 - 6.5)**
-
-20. Were any development adjustments applied during configuration (e.g., prompt iterations, output filters, confidence thresholds)?
-21. Is there any custom Lambda code for this model, or is the deployment entirely AWS-managed through QIC?
-22. What version control and change management procedures are in place for the QIC configuration and system prompt?
-
-**N/A Confirmation**
-
-23. Several Section 6 template requirements appear not applicable to this model. Can you confirm the following do not apply?
-    - Fine-tuned, distilled, or custom-built LLM (Instruction 7)
-    - Agentic AI framework (Instruction 6)
-    - Graph database (Instruction 4, if QIC uses vector only)
-    - Content-based feature engineering beyond existing article tags (Instruction 6.2.1, if no new features are generated)
+**Documentation templates (John / Baloo)**
+- Jordan shared the GenAI Model Development Template link on the MRM SharePoint
+- Suggested that the model owner begin with Section 6 (Model Design and Construction), then Section 5 (Development Data), then Section 7 (Performance and Testing)
 
 ---
 
-## 3. GenAI Development Template - Section 5 Discussion (5 min, time permitting)
+## 2. Scope Clarification
 
-If the article breakdown from Liz Eisert is available, we would like to begin discussing Section 5 (Development Data). If not available, this will be deferred to the next meeting.
+- ITSC is out of scope for this model because it is employee contact only, not external customers
+- Initial deployment includes articles for three business lines: 24Hr Banking, Card, and MPS
+- Three SMEs identified, one per business line: John Lorence (24Hr Banking), Melissa Martin (Card), Lori Hamilton (MPS)
 
-**Data Sources (5.1)**
+---
 
-24. What are the source systems for the knowledge base articles (ServiceNow, Salesforce, or both)? Who is the data source owner?
-25. What is the article count for the 24Hr Banking scope, and how are articles distributed across categories or tags?
-26. Are there differences between the articles available in the development/testing environment and the production knowledge base?
-27. What data sources will be used for testing and evaluation (Cyara outputs, SME-curated sets, synthetic data, or a combination)?
+## 3. Testing Approach Discussion
 
-**Data Quality (5.2)**
+**Test case ownership**
+- John clarified that test case development will be done by the platform team, not business line SMEs, because the testing objective is whether the IVR response matches the content in the knowledge base article, not whether the article content itself is accurate (article accuracy is handled separately through CAD approvals)
+- Jordan noted that SME involvement is still needed to curate and verify the ground truth in test cases, citing an example from prior DeepEval testing where an incorrect expected answer in the test case caused a false failure in grading
 
-28. What quality controls exist for the knowledge base articles (e.g., reconciliation against ServiceNow, duplicate detection, staleness review)?
-29. How frequently are articles updated, and what is the synchronization process between ServiceNow/Salesforce and QIC?
-30. Has a coverage analysis been performed to identify gaps in the KB relative to expected customer queries?
+**DeepEval test case structure**
+- Aditi walked through the DeepEval test case format used for a prior model
+- Each test case includes a user scenario description, expected outcome, and grading metrics
+- Jordan noted that the expected outcome must accurately reflect the scenario to avoid false failures; in one prior test case, mismatched data between the scenario description and the expected answer caused an unfair grade
 
-**Data Pre-Processing (5.3)**
+**Multi-turn capability**
+- Baloo confirmed that the model supports multi-turn conversations
+- The AI can ask clarifying questions (e.g., offering to deliver a multi-step answer one step at a time)
+- Single-turn interactions also occur depending on the query
 
-31. Is any preprocessing applied to articles before ingestion into QIC (e.g., HTML stripping, formatting normalization, PII masking)?
-32. Is any preprocessing applied to customer queries before they reach the LLM (e.g., query rewriting, spelling correction)?
-33. If synthetic test data will be generated, what methodology and tools are planned?
+**SME vs. automated evaluation**
+- Jinjun stated that both SME evaluation and automated evaluation are required for initial validation
+- The automated evaluation uses an LLM-as-Judge approach, but the SME evaluation is needed to verify that the automated scoring is trustworthy before scaling
+- If the SME evaluation confirms that the automated evaluation is reliable, automated evaluation can be scaled for ongoing monitoring
 
-**N/A Confirmation**
+**Evaluation criteria discussed**
+- Accuracy: the response matches the article content
+- Completeness: no important steps or information are missing
+- Faithfulness: the response is grounded in the retrieved article, not hallucinated
+- Correct article retrieval: the model accessed the right article for the query
+- Root cause attribution: distinguish retrieval errors (wrong article) from hallucination (correct article, fabricated content)
 
-34. Several Section 5 template requirements appear not applicable to this model. Can you confirm the following do not apply?
-    - Foundation LLM training data details (proprietary Anthropic model, no U.S. Bank training data)
-    - Fine-tuning or distillation data sources
-    - Data partitioning splits (training, holdout, out-of-time)
-    - Upstream feeder models other than Nova Sonic for STT
+---
+
+## 4. Section 6 N/A Confirmation
+
+- Baloo confirmed that the following Section 6 template requirements do not apply to this model:
+  - No fine-tuning: Claude Haiku 4.5 is used as-is
+  - No graph database: vector database only, abstracted behind the QIC platform
+  - No content-based feature generation: articles are ingested as-is with no summarization, keyword extraction, or metadata generation beyond existing tags
+- Agentic framework: Baloo described the model as agentic but stage-based, not autonomous, with a single stage in the current implementation. The model uses only OOTB Escalate and Complete tools with no custom Lambda tools, no planning, and no autonomous tool selection. Validation will follow up to confirm whether Section 6 Instruction 6 (Agentic AI) applies given the template's definition, which scopes to models with planning, autonomous tool selection, and reasoning traces
+
+---
+
+## Action Items
+
+| Owner | Item | Target |
+|---|---|---|
+| John | Coordinate with Liz Eisert on article breakdown by BL and image identification | Next meeting |
+| Scott | Share Cyara documentation (white paper or website materials) | Next meeting |
+| John / Platform | Develop one sample DeepEval test case for a KB article to confirm the test case format and grading criteria | Next meeting |
+| John / Baloo | Begin writing Section 6 of the GenAI Development Template | Next meeting |
