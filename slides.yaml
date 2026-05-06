@@ -1,44 +1,76 @@
-# Model 7409 — Meeting Agenda
+# Meeting Summary: Nimbus Uno Training Feedback (Session 7)
 
-**Date:** May 6, 2026
-**Duration:** 30 minutes
-**Attendees:** Jordan, Jinjun, Aditi, John, Baloo, Ravi, Purnima, Linda
-
----
-
-Context: PA sign-off target is May 13. Two items remain as required pre-sign-off dependencies (DeepEval V10/V11 regression results and SME production review plan). All other open items can be deferred to IV. This meeting should confirm timelines for the two blockers and update status on the remaining open items.
+**Date:** Monday, May 4, 2026, 12:00 - 1:00 PM CT
+**Organizer:** Maxim Borissyuk
+**Facilitator:** Satyajeeta (Jeeta) Misra
+**Attendees:** Casandra Kerr, Duncan Fung, Ben Vulu, Valerie Hsu, Max Zalutskiy, Kamilla Iskenderova, Ali Nabiz, Jordan Low, Peter Drembelas, and others from MRM validation team
 
 ---
 
-## 1. DeepEval Regression Results — PA Blocker (10 min) — Purnima / Ravi
+## Purpose
 
-The full V10 DeepEval regression results were originally due April 22 and have not been received. Purnima committed on 4/28 to fixing the top 5 misaligned test case designs and rerunning on V11 (current IT production version). Validation needs these results to close the V9-to-V10 bridging narrative and sign off on PA.
+First structured feedback session after completion of Nimbus Uno Training Sessions 1 through 6. Validators shared their experiences testing the platform against their assigned models. Discussion was organized module by module.
 
-1. What is the status of the corrected test cases and rerun? When will results be delivered?
-2. (Item 106) The 12 misaligned cases (escalation metadata, dispute type labels, multi-transaction, amount extraction): are the top 5 fixes complete? Have they been rerun?
-3. (Item 107) For the remaining 7 misaligned cases that Purnima assessed as lower priority, confirm that the model escalates correctly regardless of the dispute type label. Validation will document this as a limitation rather than a deficiency if confirmed.
-4. Confirm IT version numbering: current IT production = V11. Does V11 match the UAT V10 prompt and tools, or were additional changes made?
+---
 
-## 2. SME Production Review Plan — PA Blocker (10 min) — John / Linda
+## Data Ingestion Feedback
 
-The SME review approach for production calls is the other pre-launch dependency. No operational plan has been provided as of today.
+**Duncan Fung** presented a detailed list of data ingestion issues:
 
-1. (Item 90) Sampling methodology: how will production calls be selected for review?
-2. Review medium: voice replay, transcript review, or both?
-3. Review cadence and reviewer assignment: who reviews, how often?
-4. Feedback mechanism: how does the reviewer flag issues to the development team?
-5. What is the timeline for delivering this plan? Validation needs it documented before May 13.
+- Platform cannot natively parse dates in YYYY format, which is standard for macroeconomic datasets. Requires manual rework to convert to month or quarter-end dates. Jeeta suggested this could be handled via UDF, but Duncan pushed back that the vendor should build commonly needed features rather than routing customers through workarounds.
+- Imported datasets receive arbitrary names (e.g., "table1234") instead of inheriting the source file name.
+- The viewVersions metadata function does not retain the original imported file name, making it impossible to trace what was imported for reproducibility.
+- SQL connections do not work for the macroeconomic database (MED) because it uses Windows service authentication, which the Nimbus interface does not support.
+- No API connectivity for public data sources (FRED, census.gov). Standard URL-to-JSON API calls are not available.
 
-## 3. AWS Platform Access Walkthrough (5 min) — Baloo
+---
 
-1. (Item 108) Baloo provided access to AWS and QiC. Validation needs a walkthrough to navigate to the model-specific pathways (QIC dashboard, CloudWatch logs, Contact Lens analytics). Can we schedule a 30-minute walkthrough this week?
+## Platform Readiness and General Feedback
 
-## 4. Remaining Open Items — Status Check (5 min) — All
+**Max Zalutskiy** acknowledged the platform's ambitious vision but stated the product is not ready, based on the frequency of glitches and unintuitive behavior. He raised a career concern: if Nimbus is not widely adopted in the industry, time spent learning it comes at the expense of maintaining marketable Python skills, which has broader professional value. He also questioned the vendor relationship dynamic. The original rationale for buying a vendor solution was to learn best practices from a platform with Category 1 and Category 2 bank exposure. In that framing, the vendor should be bringing features the team had not thought of, not the other way around. He asked how many clients Nimbus actually has and at what capacity they are deployed. Bank of America was named but no detailed client list was provided.
 
-These items do not block PA but are tracked for IV. Quick status updates only.
+**Kamilla Iskenderova** reported that regression model support is essentially non-functional. Ongoing comparison tests, performance testing, model comparison, and backtesting all return errors stating "only scorecard metrics test case." K-fold validation for regression is completely broken (demonstrated to Brian). Sensitivity analysis works but displays observation index instead of dates on charts with no way to change it. Forecasting does not work for regression models. Data preprocessing capabilities are insufficient for the complexity of her models. Her conclusion: for regression models, the platform is not usable. Every operation requires routing through UDF, and if everything requires UDF, Python or RStudio is more convenient.
 
-- (Item 25) nameOfContacted blank pattern: DDIAI-66 still in Backlog. Any movement?
-- (Item 26) $0.00 dispute amount on duplicate charge: DDIAI-41 still in Backlog. Any movement?
-- (Item 94) Updated per-turn and conversation workflow diagrams reflecting V10. Target was 4/22. Baloo: when can Validation expect these?
-- (Item 98) Casper API date format validation: lightweight confirmation still needed.
-- (Item 49) Disclosure/consent logging: consent is in the CTR. SME re-evaluation of disclosure quality deferred to IV based on live call observations.
+**Valerie Hsu** reported that XGBoost implementation only exposes 4 tunable hyperparameters with no regularization parameters, making model replication impossible. The UI restricts values to 0.1 increments (cannot set 0.75, only 0.7 or 0.8). The data adjustment step only offers 3 operations (combine, append, transpose) with no efficient way to drop multiple features. Fraud models receive new algorithms frequently (community detection via TigerGraph, computer vision) and the lead time for Nimbus to implement new model types is impractical for their validation schedule. Pipelines cannot be meaningfully reused because fraud model designs change frequently. Her assessment: for fraud models, the platform does not streamline day-to-day activities.
+
+**Ben Vulu** raised connectivity stability concerns, noting multiple training sessions experienced access failures with no clarity on whether work-in-progress would be saved. He requested that report template ingestion and export be seamless, preferring to output from Nimbus into Word and edit locally rather than typing in a browser. He also noted that document formatting breaks on download (brand standards, colors, graphics stripped), which was confirmed as a known issue already communicated to Nimbus.
+
+**Ali Nabiz** requested concrete timelines for issue resolution. The vendor has repeatedly said "we'll work on it" without commitments. For Model 6001, SAS access is required and the timeline is unknown.
+
+**Duncan Fung** (additional feedback) noted that many mortgage and market risk models involve vendor models (PolyPaz, ICE, Calypso, Bloomberg) or custom internally developed models (e.g., Gibbs/Metropolis-Hastings MCMC in R) with small datasets and no pipeline needs. Migrating these to Nimbus adds effort with no efficiency gain. He asked that management recognize Nimbus cannot be universal.
+
+An additional team member noted that model validation is heavily model-specific and portfolio-specific in its variable manipulation, questioning whether the platform's generalized features can accommodate this specificity and doubting reusability of workflows across different models.
+
+---
+
+## Strategic Context from Jeeta
+
+Jeeta articulated management's rationale for the platform: centralized cloud repository, pipeline orchestration (extremely resource-intensive to build in Python/R at scale), connectivity to Azure/SAS/Snowflake/Databricks, and the structural constraint that on-prem infrastructure (including Power9) is end-of-life by 2027 to 2028 with nothing funded to replace it.
+
+She acknowledged the low-code environment does not work for most of the team's model types (regression, Markov chain, hazard, fraud algorithms) and encouraged testers to focus POC testing on the UDF route instead.
+
+She noted the Nimbus team customizes features client-by-client rather than shipping a complete product, meaning features may be enabled upon request. On SAS connectivity, the target is July 15 for the UAT environment.
+
+She framed the platform decision as a multi-year effort and asked the team to keep an open mind, noting the decision rests with validation executives and Vijay.
+
+---
+
+## Cross-Cutting Themes
+
+Three themes emerged independently from multiple participants:
+
+1. **UDF as universal fallback undermines the value proposition.** If every non-trivial operation routes through UDF (custom Python), the platform adds overhead without adding capability versus standalone Python or RStudio. Kamilla, Valerie, Duncan, and Max each arrived at this conclusion from different model types.
+
+2. **First-line adoption is a critical dependency.** If developers do not use the platform, validators bear the full cost of pipeline recreation. MRM policy prevents forcing first-line teams to adopt, making this an unresolved structural question.
+
+3. **Feature requests are flowing in the wrong direction.** The vendor was expected to bring industry best practices from other Category 1 and 2 bank engagements. Instead, validators are identifying missing features and requesting builds, raising questions about the depth of the vendor's client deployment history.
+
+---
+
+## Action Items
+
+- All testers to document issues in the shared Excel tracker with screenshots in the accompanying Word document
+- All testers to revise POC testing plans with updated scope and dates, focusing on the UDF route for complex models
+- Jeeta to check whether regression/time series feature enablement is a near-term fix or multi-month effort
+- Jeeta to follow up on SAS connectivity timeline (July 15 target)
+- Weekly progress calls begin Wednesday
