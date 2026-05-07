@@ -1,83 +1,74 @@
-# Meeting Summary: Nimbus POC — Casandra's Strategic Context and Team Pushback
+# Meeting Summary: MRM Platform Comparative Use Case Testing
 
-**Date:** Wednesday, May 6, 2026
-**Key Speaker:** Casandra Kerr (SVP, MRM Program Office)
-**Facilitator:** Maxim Borissyuk
-**Attendees:** Jeeta Misra, Duncan Fung, Ben Vulu, Valerie Hsu, Max Zalutskiy, and others from MRM validation team
-
----
-
-## TLDR
-
-Validators continued to push back against Nimbus adoption, questioning whether it can handle their model types, whether the vendor will be around long-term, and whether automation even addresses the real cause of timeline delays. Casandra joined to respond directly. Her three reasons to press forward:
-
-1. **Budget or nothing.** CapEx funding expires end of 2026. If MRM does not select a platform, the funding is lost. Building a custom solution was already evaluated and is too expensive (JP Morgan spent $12 million; U.S. Bank does not have that budget). The alternatives evaluated so far (Lumenova, DataRobot, Azure ML Studio) have less functionality than Nimbus.
-
-2. **Validation timelines must come down.** Jodi Richard and Gunjan Kedia have directed MRM to shorten validation timelines to get models to market faster. The target is a 20% total reduction, concentrated on high-risk models that are revalidated frequently. This is not optional.
-
-3. **On-prem is going away.** SAS and on-prem infrastructure are end-of-life. MRM's work needs to move to cloud in a cohesive way, and a platform is the vehicle for doing that.
-
-Her explanation for the poor delivery so far: the project was funded in January 2024 but technology deprioritized infrastructure setup for almost a year. Nimbus did not get a working environment until January 2026, compressing everything. The platform is not ready and she acknowledges that, but the team needs to start somewhere and document what works and what does not so leadership can make an informed decision.
+**Date:** Wednesday, May 6, 2026, 10:30 - 11:00 AM PT
+**Organizer:** Satyajeeta (Jeeta) Misra
+**Attendees:** Casandra Kerr (SVP), Gopal Vemu, Manoj Kamaraj, Maxim Borissyuk, Jordan Low, Ali Nabiz, Yixia Chen, Zhengji Guo, Baixiang Wang
+**Absent:** Saima Shafiq
+**Cc:** Casandra Kerr, Ali Nabiz, Yixia Chen, Zhengji Guo, Baixiang Wang, Saima Shafiq
 
 ---
 
 ## Purpose
 
-Weekly progress update following the Session 7 feedback roundtable. Casandra joined to provide executive context on the Nimbus POC, the broader automation strategy, and management's expectations.
+Platform comparison discussion across four candidates: Nimbus Uno, Azure ML Studio, Lumenova, and DataRobot. Originally scheduled to focus on Lumenova testing for MRM use cases. Note: AI COE's Model and Platform Program references Azure AI Foundry Studio, which is not covered in this bake-off.
 
 ---
 
-## Casandra's Remarks
+## TLDR
 
-Casandra opened with context on the project's history and strategic framing. Key points:
-
-**Budget and timeline pressure.** The CapEx funding for this project has been extended multiple times, and the extensions run out at the end of 2026. The project was originally supposed to kick off in 2024, but technology deprioritized it for almost a year. Infrastructure was not ready until January 2026, compressing the timeline significantly. Casandra may be able to get another extension by pointing to technology's delays, but the message is clear: a decision needs to be made.
-
-**Build vs. buy was already evaluated.** The original plan was to build a custom platform. The cost was outside the bank's appetite. JP Morgan spent $12 million building theirs. U.S. Bank does not have that budget. The decision to evaluate vendor platforms followed directly from that.
-
-**Nimbus has not been selected.** This is a POC. No contract has been signed. The team is testing whether this product can meet MRM's needs. If it cannot, the team needs to document that clearly. The final decision will be an up-or-down vote by Bob, Brian, Yanon, Vijay, and Becca, with Casandra providing input.
-
-**The core problem is validation timelines.** Jodi Richard and Gunjan Kedia have communicated that validation timelines need to be shortened. This is not about a bottleneck or missed deadlines per se. It is about getting models to market faster, particularly with the pace of AI development creating new use cases that need rapid deployment. The total reduction target is 20%, but this will not be spread evenly. High-risk models that are revalidated frequently will be targeted first for the greatest efficiency gains.
-
-**Not all models need to fit.** Casandra acknowledged that some models, particularly vendor models and highly customized internally developed models, may not make sense on the platform. Those decisions will be made between the relevant validation executive and Vijay on a case-by-case basis. However, Vijay has made it clear he wants to deploy automation across the entire model inventory to the extent feasible.
-
-**Alternatives have been evaluated and are weaker.** Other platforms (including those sponsored by AICOE and other development groups) have significantly less functionality than Nimbus. Lumenova had 50% less functionality than Nimbus in initial testing. DataRobot and Azure ML Studio are still being evaluated. Nimbus is currently the best option within budget, even with its limitations.
-
-**First-line adoption is desired but cannot be forced.** Casandra would like development groups to adopt the platform. Some are interested. Treasury has built their own AWS automation and wants to stick with it. AICOE has computing platforms suited for AI development but not validation. Most other model groups do not have a platform-level approach. MRM cannot mandate adoption.
-
-**This is a multi-year effort.** Customization will not be complete in 2027. The process starts in 2027. The platform will not magically cut validation timelines in half. In the interim, it may create additional work. But the direction is to move from on-prem and SAS to cloud in a cohesive way, and the team needs to start.
-
-**The root cause of long validation timelines is also being addressed separately.** Casandra noted this is not only about automation. A separate process mapping exercise has been completed covering model onboarding through retirement. Documentation acceptance on the front end is being targeted so that when a validation formally starts, the documentation is sufficient. This resets the measurement starting point and addresses the back-and-forth with model owners that validators identified as the primary driver of delays.
+Jeeta presented a high-level platform comparison positioning Nimbus as the clear winner over Lumenova based on Nimbus's claimed feature set across the traditional model validation lifecycle. Lumenova was characterized as a model inferencing platform that does not support MRM's full validation needs. DataRobot was just onboarded and evaluation is beginning. Jordan raised whether SR 2026-13a changes the platform comparison targets; Casandra said it does not materially change requirements but acknowledged that shifting lower-risk performance testing toward monitoring is under consideration. Separately, Jeeta asked Gopal whether DataRobot experiences the same Azure stability issues as Nimbus; Gopal reported no such issues with DataRobot's Azure deployment.
 
 ---
 
-## Team Discussion
+## Jeeta's Platform Comparison Summary
 
-**Duncan Fung** asked about exceptions for vendor models and non-standardizable high-risk models. He noted that many mortgage and market risk models (PolyPaz, ICE, Calypso, Bloomberg, custom MCMC models) have small datasets, no pipelines, and existing working code. Casandra confirmed exceptions will exist but the justification needs to be solid, and those decisions go through the validation executive and Vijay.
+Jeeta presented a high-level comparison, positioning Nimbus as the strongest option for MRM's traditional model validation lifecycle. Key arguments:
 
-**Max Zalutskiy** asked about vendor viability and lock-in risk. If MRM commits to a vendor, will they be around in 5 years? Are there bigger names? Casandra noted the main larger-name alternative is SAS's platform, which is cost-prohibitive. Solytic (the Nimbus vendor) has a long-standing relationship with U.S. Bank leadership going back to the UPAN era, and TPRM requires financial statement review before any long-term contract. Max also observed that the vendor's responsiveness during POC testing is a preview of post-contract behavior.
+**Lumenova assessed as insufficient for MRM lifecycle.** Jeeta characterized Lumenova as a "model inferencing platform" that does not support the model benchmarking and development that MRM requires across the full validation lifecycle. Traditional statistical techniques used in credit risk and market risk (AUC, ROC, KS statistics, F-statistics, T-statistics) were described as not available on Lumenova based on conversations with the Lumenova team. Jeeta stated that Nimbus has approximately 90% of the required statistical metrics available versus Lumenova's partial coverage.
 
-**Valerie Hsu** raised that automation may not address the actual root cause of timeline delays, which for her team is the back-and-forth with model owners and insufficient documentation, not the analytical work itself. Casandra agreed and described the parallel process improvement initiative, including documentation acceptance criteria and monitoring automation.
+**SAS and on-prem database connectivity.** Nimbus can integrate with SAS, absorb SAS files and R files, and connect to on-prem databases (Vault, FTW). Lumenova was described as having only partial capability in this area. This was framed as critical because most MRM models are still in SAS, with very few in Python.
 
-**Duncan** asked about the trade-off between standardization and risk-based prioritization, noting that high-risk models tend to be the least standardized and therefore the hardest to automate. Casandra acknowledged the trade-off and said the ROI of customization will be weighed case by case.
+**Audit trail and SR 11-7 compliance.** Nimbus was described as having stronger audit trail support aligned with SR 11-7 requirements than Lumenova.
 
-**Ben Vulu** asked whether first-line development groups are expected to adopt the platform. Casandra confirmed she wants them on it but cannot force it, and that coordinating across groups involves "turf wars, egos, and things not working great for everybody."
+**DataRobot still under evaluation.** Jeeta noted her team was onboarded to DataRobot that week. Initial impressions suggest it has more functionality than Lumenova but whether it meets MRM's specific statistical and model-type requirements is unknown. A DataRobot demo was scheduled for the following day.
 
----
-
-## Administrative Items (Maxim / Jeeta)
-
-- Testing plans need to be revised to match the new simplified template (detailed project plan combining KPIs and acceptance criteria). Maxim will distribute the template via email with instructions.
-- Jeeta noted that Vijay wants screenshots and proof of testing in a Word document organized by model, with sections for inventory manager, job queues, data management, and model performance. This document will be reviewed and signed off by the relevant validation executive.
-- Revised plans with accurate start and finish dates are due by next Wednesday's meeting.
+**Nimbus roadmap.** Q2 2026 testing continues through July. Concurrent feature enablement includes Azure ML Studio connectivity, SAS connections, and database connections. Jeeta committed to sharing a detailed feature-by-feature Excel comparison with the group.
 
 ---
 
-## Key Takeaways
+## DataRobot Discussion
 
-1. Funding expires end of 2026. A platform decision must be made.
-2. Nimbus is not selected. This is still a POC. The team's job is to give leadership the facts.
-3. The 20% validation timeline reduction target is the driving metric, concentrated on high-risk revalidation models.
-4. Exceptions for models that do not fit will be allowed, but justification must be strong and goes through the validation executive and Vijay.
-5. Automation is one workstream. Process improvements (documentation acceptance, monitoring) are being pursued in parallel.
-6. Alternative platforms evaluated so far have less functionality than Nimbus.
+Gopal Vemu provided context on DataRobot's current deployment at U.S. Bank:
+
+- The marketing team currently uses the on-prem version of DataRobot, reading SAS datasets directly without format conversion. This capability should carry over to the cloud version.
+- Running SAS code (not just reading SAS datasets) on DataRobot is an open question. Gopal committed to checking with the DataRobot team.
+- A "Notebooks" feature exists in the cloud version but is not yet enabled in U.S. Bank's environment. It is being enabled incrementally.
+- DataRobot is currently available in the IT environment only, not UAT or Prod. Both environments will have the same capacity.
+- Gopal reported no Azure-related stability issues with DataRobot's UI, in contrast to the connectivity issues reported during Nimbus training sessions.
+- Time series functionality exists in DataRobot (was experimented with 3-4 years ago by other teams on the on-prem version). Regression models are supported as core functionality.
+
+A team member asked whether DataRobot has been used by teams working with statistical models, particularly regression and time series. Gopal confirmed the capability exists and encouraged testing on the latest cloud platform.
+
+---
+
+## SR 2026-13a and Requirements Discussion
+
+Jordan Low asked whether the new SR 2026-13a changes the platform evaluation criteria or comparison targets. Casandra stated that the new guidance does not materially change MRM's requirements. It emphasizes a principles-based approach rather than strict prescriptive requirements, but MRM already operates with a risk-based approach (model risk ratings, validation frequencies based on ratings). The new guidance provides better justification for process improvements MRM was already considering, but does not drive a fundamentally different set of platform requirements.
+
+Jordan also raised that SR 2026-13a suggests lower-risk model performance testing could be pushed toward monitoring, which would change the priorities for an automation platform. Casandra noted this was already under consideration. If validation timelines are pushed out, monitoring becomes more important, and how to balance both is still being determined.
+
+---
+
+## Nimbus Azure Stability Question
+
+Jeeta asked Gopal whether DataRobot's Azure infrastructure experiences the same stability issues that Nimbus has encountered (connectivity drops, "no healthy upstream" errors). Gopal reported no such issues with DataRobot's Azure deployment.
+
+---
+
+## Action Items
+
+- Jeeta to share detailed feature-by-feature Excel comparison (Nimbus vs. Lumenova vs. DataRobot) with the group
+- Jeeta to share the presentation slides with Gopal
+- Gopal to check whether DataRobot can run SAS code (not just read SAS datasets)
+- DataRobot demo scheduled for the following day
+- Jeeta's team to complete DataRobot evaluation over the next couple of weeks
