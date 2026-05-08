@@ -1,74 +1,162 @@
-# Meeting Summary: MRM Platform Comparative Use Case Testing
+# Revision Guidance: Model 7306 SPV Outcome Form Draft
 
-**Date:** Wednesday, May 6, 2026, 10:30 - 11:00 AM PT
-**Organizer:** Satyajeeta (Jeeta) Misra
-**Attendees:** Casandra Kerr (SVP), Gopal Vemu, Manoj Kamaraj, Maxim Borissyuk, Jordan Low, Ali Nabiz, Yixia Chen, Zhengji Guo, Baixiang Wang
-**Absent:** Saima Shafiq
-**Cc:** Casandra Kerr, Ali Nabiz, Yixia Chen, Zhengji Guo, Baixiang Wang, Saima Shafiq
+**From:** Jordan  
+**To:** Tessa  
+**Date:** May 7, 2026  
+**Re:** Xinyu's comments on the SPV draft, plus additional items
 
----
-
-## Purpose
-
-Platform comparison discussion across four candidates: Nimbus Uno, Azure ML Studio, Lumenova, and DataRobot. Originally scheduled to focus on Lumenova testing for MRM use cases. Note: AI COE's Model and Platform Program references Azure AI Foundry Studio, which is not covered in this bake-off.
+Xinyu reviewed the draft and left eight comments. All eight are valid. Below is what each comment is asking for and what you should do to address it. After that, I have three additional items.
 
 ---
 
-## TLDR
+## Xinyu's Comments
 
-Jeeta presented a high-level platform comparison positioning Nimbus as the clear winner over Lumenova based on Nimbus's claimed feature set across the traditional model validation lifecycle. Lumenova was characterized as a model inferencing platform that does not support MRM's full validation needs. DataRobot was just onboarded and evaluation is beginning. Jordan raised whether SR 2026-13a changes the platform comparison targets; Casandra said it does not materially change requirements but acknowledged that shifting lower-risk performance testing toward monitoring is under consideration. Separately, Jeeta asked Gopal whether DataRobot experiences the same Azure stability issues as Nimbus; Gopal reported no such issues with DataRobot's Azure deployment.
+### Comment 1 — Section 2: Dates are confusing
 
----
+**What Xinyu said:** "I think we should clearly state the old start and end date and new start and end date of the pilot. They sound confusing."
 
-## Jeeta's Platform Comparison Summary
+**What to do:** Replace the current narrative sentence with a clean before/after format at first mention. Do not mix the extension, the delay explanation, and the launch confirmation into one sentence. Present the dates on their own, then explain why they changed.
 
-Jeeta presented a high-level comparison, positioning Nimbus as the strongest option for MRM's traditional model validation lifecycle. Key arguments:
+**Suggested rewrite for the relevant portion of Section 2:**
 
-**Lumenova assessed as insufficient for MRM lifecycle.** Jeeta characterized Lumenova as a "model inferencing platform" that does not support the model benchmarking and development that MRM requires across the full validation lifecycle. Traditional statistical techniques used in credit risk and market risk (AUC, ROC, KS statistics, F-statistics, T-statistics) were described as not available on Lumenova based on conversations with the Lumenova team. Jeeta stated that Nimbus has approximately 90% of the required statistical metrics available versus Lumenova's partial coverage.
+> Previous pilot period: 02/01/2026 through 08/01/2026. Revised pilot period: 05/04/2026 through 11/01/2026.
+>
+> This memo extends the approved pilot production timeframe for Model 7306, PayVIEW Digital Assistant (Query Agent). The pilot did not commence on the originally approved start date due to a PayVIEW product-level defect and pending commercialization communication from sales leadership, neither of which was related to the model or to the validation process. The pilot officially commenced on 05/04/2026.
 
-**SAS and on-prem database connectivity.** Nimbus can integrate with SAS, absorb SAS files and R files, and connect to on-prem databases (Vault, FTW). Lumenova was described as having only partial capability in this area. This was framed as critical because most MRM models are still in SAS, with very few in Python.
-
-**Audit trail and SR 11-7 compliance.** Nimbus was described as having stronger audit trail support aligned with SR 11-7 requirements than Lumenova.
-
-**DataRobot still under evaluation.** Jeeta noted her team was onboarded to DataRobot that week. Initial impressions suggest it has more functionality than Lumenova but whether it meets MRM's specific statistical and model-type requirements is unknown. A DataRobot demo was scheduled for the following day.
-
-**Nimbus roadmap.** Q2 2026 testing continues through July. Concurrent feature enablement includes Azure ML Studio connectivity, SAS connections, and database connections. Jeeta committed to sharing a detailed feature-by-feature Excel comparison with the group.
+After this first mention, all later sections should reference "the revised pilot period" or "the updated restriction date" without re-stating both old and new dates.
 
 ---
 
-## DataRobot Discussion
+### Comment 2 — Section 2: Milestones do not belong here
 
-Gopal Vemu provided context on DataRobot's current deployment at U.S. Bank:
+**What Xinyu said:** "This should be put somewhere else — they are not validation purpose for this memo."
 
-- The marketing team currently uses the on-prem version of DataRobot, reading SAS datasets directly without format conversion. This capability should carry over to the cloud version.
-- Running SAS code (not just reading SAS datasets) on DataRobot is an open question. Gopal committed to checking with the DataRobot team.
-- A "Notebooks" feature exists in the cloud version but is not yet enabled in U.S. Bank's environment. It is being enabled incrementally.
-- DataRobot is currently available in the IT environment only, not UAT or Prod. Both environments will have the same capacity.
-- Gopal reported no Azure-related stability issues with DataRobot's UI, in contrast to the connectivity issues reported during Nimbus training sessions.
-- Time series functionality exists in DataRobot (was experimented with 3-4 years ago by other teams on the on-prem version). Regression models are supported as core functionality.
-
-A team member asked whether DataRobot has been used by teams working with statistical models, particularly regression and time series. Gopal confirmed the capability exists and encouraged testing on the latest cloud platform.
+**What to do:** Remove the entire "Anticipated Milestones and Timelines" bullet list from Section 2. Section 2 should answer "what are we doing and why" in one to two sentences, nothing more. Move the milestone content to Section 5.3 (Current Validation Conclusions), where operational context and forward-looking timelines are appropriate. If Section 5.3 gets too long as a result, consider placing the milestone list in an appendix instead.
 
 ---
 
-## SR 2026-13a and Requirements Discussion
+### Comment 3 — Section 3.2: Redundant date framing
 
-Jordan Low asked whether the new SR 2026-13a changes the platform evaluation criteria or comparison targets. Casandra stated that the new guidance does not materially change MRM's requirements. It emphasizes a principles-based approach rather than strict prescriptive requirements, but MRM already operates with a risk-based approach (model risk ratings, validation frequencies based on ratings). The new guidance provides better justification for process improvements MRM was already considering, but does not drive a fundamentally different set of platform requirements.
+**What Xinyu said:** "This is confusing. See my above comments."
 
-Jordan also raised that SR 2026-13a suggests lower-risk model performance testing could be pushed toward monitoring, which would change the priorities for an automation platform. Casandra noted this was already under consideration. If validation timelines are pushed out, monitoring becomes more important, and how to balance both is still being determined.
+**What to do:** The sentence "Model 7306, PayVIEW Digital Assistant (Query Agent), has been granted an extension of the pilot production period from August 1, 2026, to November 1, 2026, subject to a time-bound restriction" re-explains the date change that was already stated in Section 2. Each section has one job. Section 3.2's job is to state the outcome and why it is warranted, not to re-narrate what the extension is.
+
+**Suggested rewrite for the opening of Section 3.2 Rationale:**
+
+> The revised pilot period described in Section 2 extends the previously approved timeframe to allow the business line to execute the pilot as originally intended. The model framework, risk mitigation strategies, and all restrictions from the prior provisional approval remain unchanged. This extension does not represent a reassessment of the model's design or performance.
+
+Remove the separate bullet that begins "This determination does not represent a reassessment..." since the rewrite above already captures that point. Keep the bullet about the model's human-in-the-loop design, but trim it — it does not need to re-describe the entire model.
 
 ---
 
-## Nimbus Azure Stability Question
+### Comment 4 — Section 3.2: "Technically deployed" undermines stated position
 
-Jeeta asked Gopal whether DataRobot's Azure infrastructure experiences the same stability issues that Nimbus has encountered (connectivity drops, "no healthy upstream" errors). Gopal reported no such issues with DataRobot's Azure deployment.
+**What Xinyu said:** "What does it mean? I'm not sure what is the purpose of this sentence."
+
+**What to do:** Delete the sentence: "While the model has been technically deployed the absence of broader pilot participation has resulted in insufficient usage and log data to support comprehensive evaluation at this time."
+
+The memo's position is that the pilot did not formally commence until 05/04/2026. Saying the model was "technically deployed" contradicts that position and invites questions about whether the model was in production use before the pilot officially started. State the position cleanly; do not hedge.
 
 ---
 
-## Action Items
+### Comment 5 — Section 3.2: "Existing time-bound" is ambiguous
 
-- Jeeta to share detailed feature-by-feature Excel comparison (Nimbus vs. Lumenova vs. DataRobot) with the group
-- Jeeta to share the presentation slides with Gopal
-- Gopal to check whether DataRobot can run SAS code (not just read SAS datasets)
-- DataRobot demo scheduled for the following day
-- Jeeta's team to complete DataRobot evaluation over the next couple of weeks
+**What Xinyu said:** "Confusing, existing timebound?"
+
+**What to do:** The memo just changed the time-bound restriction from 08/01/2026 to 11/01/2026. Calling it "existing" is ambiguous because the reader cannot tell whether "existing" means the pre-change date or the post-change date.
+
+Replace "The model remains subject to its existing time-bound and scope-based restrictions" with one of:
+
+- "The model remains subject to the updated time-bound restriction (pilot through 11/01/2026) and all scope-based restrictions from the original provisional approval."
+- "The model remains subject to the revised pilot end date of 11/01/2026 and all scope-based restrictions established under the original provisional approval."
+
+---
+
+### Comment 6 — Restriction Effective Date: Wrong box checked, footnote truncated
+
+**What Xinyu said:** "Can you check this box? Read the footnote. Am I missing anything?" and "Also footnote got cut off."
+
+**What to do:** Two fixes required.
+
+1. **Uncheck** "The restriction date equals the validation sign-off date." **Check** "The following date:" and enter **11/01/2026**. Footnote 2 is explicit: for time-bound or single-use restrictions, the restriction effective date reflects the date of last approved use of the model. That is the pilot end date (11/01/2026), not the sign-off date. This is a template compliance error that must be corrected before sign-off.
+
+2. **Restore the full footnote text.** The footnote was truncated in the Word document. The complete footnote 2 text is: "For time-bound or single-use restrictions, the restriction effective date reflects the date of last approved use of the model. For other restrictions, the restriction effective date aligns with the Sign-Off date of the validation report containing the applicable restriction. If the restriction date is dependent on the due date of a corresponding issue and the due date is not yet determined, then a restriction date equal to the next annual review date is used."
+
+---
+
+### Comment 7 — Restriction Description: Missing start date
+
+**What Xinyu said:** "State start date please."
+
+**What to do:** The restriction description currently says "Pilot is extended to 11/01/2026." This gives only the end date. A restriction description must be self-contained so a reader can understand it without cross-referencing other sections.
+
+**Suggested rewrite:**
+
+> Pilot duration: 05/04/2026 through 11/01/2026. Previous pilot period: 02/01/2026 through 08/01/2026. All other restrictions and requirements from the prior provisional approval (signed 01/30/2026) remain unchanged and are reiterated below:
+>
+> [keep the existing sub-bullets on agent limits, GTM/MMP scope, and 800 KB articles]
+
+---
+
+### Comment 8 — Recommendation: Combined-answer change confused with Summary Persona
+
+**What Xinyu said:** "Remove this — questionnaire summary could be a different EMA. There is not 4 answers to one answer. Am I missing the latest discussion?"
+
+**What happened:** Xinyu initially read this as referring to the Summary Persona (the questionnaire summarization feature, which is being documented as a separate EMQ and is likely out of MRM scope). It is not. This refers to the chatbot output change where the Query Agent now presents a single combined answer instead of four individual candidate answers. We discussed this on the 04/29 call and agreed it constitutes a model change requiring separate approval.
+
+**What to do:** Do not remove. Instead, reword so the change is unmistakably about the chatbot, not the Summary Persona. Use the specific functional description.
+
+**Suggested rewrite:**
+
+> Validation noted during the April 29, 2026 discussion that the Model Developer is developing a change to the Query Agent chatbot that would consolidate four candidate answers into a single LLM-summarized response presented to the user. This change to the chatbot output format is not approved under the current provisional approval (which included this only as a "consider" recommendation for before full production) and has not been deployed. Prior to deployment, this change will require separate documentation and approval, consistent with MRM's GenAI Model Change Management Requirements. Validation expects this to be addressed through a subsequent Provisional Approval, estimated at approximately 3 to 4 weeks from submission through approval.
+
+**Before finalizing:** Confirm verbally with Xinyu that she is aligned after the clarification. Jordan has sent her a follow-up message.
+
+---
+
+## Jordan's Additional Comments
+
+### Additional 1 — Section 4: Use the template's prescribed referral language
+
+The template instruction for Section 4 specifies exact referral language for restriction extensions. The current draft is close but improvises the wording. Sign-off reviewers compare against template language, so use it verbatim.
+
+**Replace the current Section 4 text with:**
+
+> Since this report documents a restriction extension, this section is not required. Refer to prior validation reports of each impacted method for a summary of modeling framework and detailed business uses.
+
+If you want to be more specific (which is fine), you can add a parenthetical reference:
+
+> Since this report documents a restriction extension, this section is not required. Refer to the Provisional Approval report for Model 7306 (signed 01/30/2026) for a summary of modeling framework and detailed business uses.
+
+---
+
+### Additional 2 — Section 5.3: Cut redundancy by roughly half
+
+Section 5.3 currently restates the same core facts across nearly every paragraph: the pilot didn't start on time, the delay was unrelated to the model, the end date is being extended, and all restrictions remain in effect. Paragraphs 1, 2, 4, and 5 all say variations of this. The section should say each fact once.
+
+**Suggested structure (consolidating to three paragraphs):**
+
+**Paragraph 1 — What is happening and why:**
+State that the pilot did not commence during the originally approved window, the cause was unrelated to the model (PayVIEW product defect and pending commercialization email), and the pilot officially commenced on 05/04/2026. Reference "the revised pilot period" (already stated in Sections 2 and 3.2) rather than re-listing all four dates. One paragraph, done.
+
+**Paragraph 2 — Model status and the combined-answer change:**
+Confirm that no changes to the model architecture, data sources, or functional behavior are associated with this extension. Then flag the combined-answer change (consolidating four candidate answers into a single LLM-summarized response) as a planned change that is under development, has not been deployed, and will require its own approval process before deployment. This change is not covered by this SPV. This is the paragraph from Comment 8 above.
+
+**Paragraph 3 — Forward-looking timeline and milestones:**
+This is where the milestone content removed from Section 2 (per Comment 2) should land. State the expected documentation delivery (~06/14/2026), the estimated validation timeline (8-10 weeks from receipt), and the pilot end date. Close with: all restrictions, compensating controls, and conditions from the original PA remain in full effect.
+
+Delete paragraphs 4 and 5 of the current draft, which repeat what paragraphs 1 and 3 already cover.
+
+---
+
+### Additional 3 — Section 5.1: Condense the compensating controls inventory
+
+Section 5.1 currently reproduces the full compensating controls list from the PA across nearly two pages (User Access and Training, Data Controls, Gateway Security Controls, Model Framework Guardrails, Human-in-the-Loop Oversight, Logging and Monitoring). For an SPV that is extending a date, this is disproportionate. The reader who wants the full detail can refer to the PA.
+
+**Suggested approach:** Replace the six sub-headed bullet lists with a single paragraph that names the key control categories and confirms they remain in effect.
+
+**Example:**
+
+> The provisional approval incorporated the following categories of risk mitigation, all of which remain unchanged and in effect: user access and training controls (employee-facing only, phased agent rollout, mandatory training); data controls (curated KB articles with no customer data, preserved source links); ISS GenAI Gateway security controls (authentication, logging, PII filtering, content filtering); model framework guardrails (containment checks, VRL, canned responses for low-confidence answers, profanity filtering, prompt injection controls); human-in-the-loop oversight (agents review all responses before use); and logging and monitoring (usage logs, feedback tracking, LLM interaction logging via the Gateway). For full detail on each control, refer to the Provisional Approval report for Model 7306 (signed 01/30/2026).
+
+This brings the section from two pages down to one paragraph and keeps the SPV at an appropriate length for an administrative memo.
