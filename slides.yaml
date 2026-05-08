@@ -1,81 +1,59 @@
-# US Bank - Project Meeting Minutes
+# US Bank - DeepEval Technical Review Minutes
 
-**Completed by:** Mehdi Mafi, Jordan Low
-**Revised by:** Jordan Low
+**Completed by:** Jordan Low
+**Revised by:** [TBD]
 
-Note: These minutes reflect what was discussed on 5/6. Where subsequent information clarified or resolved an open item, the original text is struck through and the update appears in [brackets].
+## Session Details
 
-## Project Details
-
-- **PROJECT:** Model 7409 - Conversational AI in IVRs Early Engagement
-- **MEETING DAY:** 05/06/2026
-- **TIME:** 3:00 PM - 4:15 PM ET
-- **MEETING ROOM:** Microsoft Teams Meeting
-
-## Meeting Attendance
-
-**BL/Model Owner:**
-- John A. Lorence
-- Sudhakar Seshadri
-- Baloo Narayanan
-- Ravi Puttashamachari
-- Purnima Kamat
-- Linda L. Beeney
-- Varun Shankar
-
-**MRG:**
-- Sana Ahmed
-
-**MRO:**
-- David Rosenthal
-
-**MRM Validation:**
-- Jordan Low
-- Mehdi Mafi
-- Aditi Pandey
-
-**Absent:**
-- Xinyu Wu
-- Jinjun Tong
+- **PROJECT:** Model 7409 - Conversational AI in IVRs
+- **SESSION:** DeepEval Technical Review (Touchpoint)
+- **DATE:** 05/07/2026
+- **ATTENDEES:** Aditi Pandey (MRM), Mehdi Mafi (MRM), Jordan Low (MRM), Purnima Kamat (BL)
 
 ---
 
-## Meeting Minutes
+## Minutes
 
-### 1. DeepEval Testing Status
+### 1. QIC Log Mismatches in Two-Dispute Scenarios
 
-- Purnima confirmed she updated the 5 test cases flagged by Validation on 4/28 (the misaligned tool call arguments in the dispute path scenarios) and is currently running the evaluation against the version in IT. The new JIRA ticket will include the evaluation CSV, conversation JSON, and QIC logs.
-- Purnima has a touchpoint scheduled with Aditi on 5/7 to go through the results.
-- Ravi confirmed the current IT version is V11. Jordan noted that the PA must document which version is going to production and confirm it performs as well or better than V9.
-- Purnima confirmed she can now pull QIC logs showing the submit tool call and JSON payload. The team agreed to review remaining details in a separate session.
+- Aditi flagged two cases where QIC logs did not align with regression results. In a two-dispute scenario, no eligibility or submit calls appeared in the QIC log for the second dispute (Shopify); only the first dispute (Temu) showed up. In a second two-dispute case (incorrect amount + duplicate charge), only one submit call was made instead of two.
+- Purnima confirmed she could see the same gaps and committed to manually pulling those two logs using Ravi's method. The automated script may have span-retrieval limitations. If the manual pull still shows missing calls, Purnima will escalate to Ravi.
 
-### 2. SME Production Review Plan (Item 90)
+### 2. Disclaimer Tool
 
-- John confirmed that the production quality review plan is being developed as part of a broader controls framework with compliance, FRM, and other risk groups. The review will closely mirror the existing process for monitoring human agent calls: a sample of calls will be listened to and scored using call replays and transcripts. The review will be conducted by the quality team under Nils Tang. Sample size is not yet determined.
-- John committed to providing the control documentation to MRM by May 15.
-- Current target pilot launch date is June 9, 2026.
+- Aditi noted a "disclaimer tool" appearing in QIC logs that was not previously documented. Purnima confirmed it is a native QIC tool, not a custom Lambda tool. Ravi would need to confirm its invocation behavior in V11.
+- Jordan noted that MRM has Connect console access and can see the agent versions. The latest version is always the deployed one.
 
-### 3. Amazon Connect Platform Walkthrough
+### 3. DeepEval Evaluation Metrics
 
-Baloo conducted a screen-sharing walkthrough of the Amazon Connect UI and the AWS Console. Key observations:
+- Aditi asked how "task completion" is determined. Purnima explained the two-step process: (1) LLM-as-caller simulates a dispute conversation with the agent, producing a JSON with session state; (2) LLM-as-judge evaluates the simulation output against the test JSON's source-of-truth fields (required fields, dispute type, amounts, etc.). The "success" status in the CSV reflects the simulation completing; task completion scoring comes from the evaluation step matching captured fields to expected values.
+- On the 0.929 score, Purnima stated she does not know exactly how DeepEval calculates it internally. The framework uses an LLM judge. The evaluation LLMs are Nova Pro and Claude Sonnet, configured in the DPL config file. Purnima provided the DeepEval GitHub link (Confident AI).
 
-**Agent configuration.** The FDI agent ("usb_fdi_orchestration_unlimitedAIAgent," Published, last updated 5/5/26) has six configured tools: three built-in native tools (Complete, Disclaimer, Escalate) and three custom Lambda tools routed through the Agent Core Gateway (Eligibility, Submit Case, Search Transaction). ~~Whether the Disclaimer tool is still actively invoked after the V10 disclaimer stage change requires confirmation from Baloo.~~ [Clarified 5/7 touchpoint: The Disclaimer tool is a native QIC tool, not a custom Lambda tool. Whether it is still actively invoked in V11 requires confirmation from Ravi/Baloo (Action Item 7, still open).]
+### 4. Compiled Results
 
-**Prompt configuration.** One system prompt ("usb_fdi_orchestration_prompt_unlimitedAI," Published, last modified 5/5/26) confirms the reasoning model as Claude Haiku 4.5 (us.anthropic.claude-haiku-4-5-20251001-v1:0). MRM confirmed read-only access to the prompt.
+- Jordan raised that validation typically expects the model owner to compile results and present a pass/fail determination, rather than having validators parse raw CSVs and JSONs.
+- Purnima noted she manually reviews each JSON for subjective metrics (empathy, professional language) and documents her observations in JIRA stories. She identified three JIRA stories created across runs and will share the IDs.
 
-**Guardrails.** No policy-based guardrails are attached to the agent (Guardrails (0)). Baloo confirmed that instruction-based guardrails (embedded in the system prompt) are the primary and currently sole guardrail mechanism on the AI agent conversation path. ~~AWS recommended instruction-based over policy-based due to latency.~~ The updated V11 diagram shows Bedrock Guardrails at steps 9/19; whether these are active on the conversation path or only on the tool execution path requires confirmation from Baloo (Action Item 5, still open). [Clarified post-meeting: Baloo forwarded the AWS recommendation email (from Sudha Nistala, AWS, dated 5/5/2026). AWS recommended a three-layer phased strategy: (1) in-prompt guardrails as the current baseline, providing lower latency with no additional API calls; (2) targeted Bedrock Guardrails to be added incrementally only where in-prompt guardrails prove insufficient through testing; (3) conversation audit / real-time alerts via CloudWatch for asynchronous monitoring. The recommended approach is to start with Layer 1, use red-teaming to identify gaps, and selectively apply Layer 2 for specific gaps rather than configuring Bedrock Guardrails broadly. AWS noted that the current in-prompt implementation has been validated through red-teaming across 5 adversarial scenarios (conducted by AWS, separate from the DeepEval test suites).]
+### 5. Prompt vs. Agent Versioning
 
-**Contact flow.** The dispute contact flow (309_NLU_debitDispute, 27 blocks, Voice: Tiffany Generative) was demonstrated. The flow designer does not support fully read-only access; MRM was instructed not to save changes.
+- Aditi noted the prompt version (V26) does not match the agent version (V32) in the Connect console. Purnima acknowledged the versioning is confusing and stated Ravi can confirm what "V11" (referenced in a prior email as current production) maps to in terms of prompt and agent versions.
 
-**AWS Console.** The FDI gateway ("usb-fdi-gateway-unlimitedAI") shows the three custom tools. MRM access requires the US East 1 (Virginia) region. Baloo recommended reviewing Lambda code through GitLab rather than the console.
+### 6. Guardrail Testing Coverage and GitLab Repo
 
-**Contact Lens and real-time metrics.** Baloo demonstrated call summary, customer sentiment tracking, transcript, and audio playback on a sample UAT call. The real-time metrics dashboard shows per-contact metrics including containment status, latency, toxicity, profanity, tool rephrases, errors, and commitments. The "unauthorized commitments" metric showed a non-zero value on the sample call; Baloo will investigate. Per-contact metrics are available now; the aggregated trend dashboard is under development and may not be ready before pilot launch.
+- Aditi asked whether additional adversarial tests (DAN persona, prompt injection) had been run beyond the 33 regression cases. Purnima clarified the 33-case suite was designed for SME testing coverage (mapping to Linda's manual tests), not as a dedicated guardrail suite. It includes some guardrail cases (malicious, jailbreak, model disclosure, role play, tool disclosure) but is not comprehensive adversarial coverage.
+- Jordan referenced the additional guardrail test files visible in the DeepEval repo from Baloo's walkthrough the prior day. Purnima confirmed she has not run those files and stated the scope expansion would need to come through Sudhakar.
+- Jordan asked Purnima to at minimum send the unrun guardrail test case files so MRM can assess whether they need to be executed.
+- The GitLab repo (usb-fdi-deepeval) contains two folders with guardrail/adversarial test cases, neither included in the current regression run:
 
-**Two Bedrock instances.** The diagram labels two environments: Amazon Bedrock (Service Account), AWS-owned, containing Claude Haiku 4.5, Nova Sonic 2, and the guardrail types; and Amazon Bedrock (USB Account), US Bank-owned, containing the Agent Core Gateway, Lambda tools, and the Terraform-configured guardrail (content policy filters, PII/PCI policy).
+  **test_cases/guardrail/** (Purnima, last updated ~1 month ago, 7 files): guardrail_dan_persona, guardrail_instruction_override, guardrail_persona_hijacking, guardrail_promptInjection, guardrail_prompt_injection, guardrail_repetition_begging, guardrail_tooldisclosure
 
-**Adversarial testing.** Baloo stated adversarial testing has been conducted manually and through the DeepEval framework, covering jailbreaking, malicious requests, model disclosure, persona hijacking, prompt injection, repetition begging, role-play jailbreak, tool disclosure, and off-topic questions. ~~The DeepEval repo contains a separate adversarial test suite alongside the 33 dispute path scenarios. Whether the adversarial tests are included in the current regression run requires confirmation.~~ Baloo offered to schedule a live adversarial demo for MRM. [Clarified 5/7 touchpoint: Purnima confirmed the 33-case suite was designed for SME testing coverage, not as a dedicated guardrail suite. The separate guardrail/adversarial test files in the repo have not been run. The GitLab repo (usb-fdi-deepeval) contains two folders maintained by different owners: test_cases/guardrail/ (Purnima, 7 files: dan_persona, instruction_override, persona_hijacking, promptInjection, prompt_injection, repetition_begging, tooldisclosure) and adversarial/ (Varun, 6 files: jailbreak, malicious, politics, promptInjection, technology, tooldisclosure). There is overlap between the two folders. Neither has been included in the regression run. MRM requested the test case files and is following up with Sudhakar on scope expansion.]
+  **adversarial/** (Varun, last updated ~1-2 months ago, 6 files): jailbreak, malicious, politics, promptInjection, technology, tooldisclosure
 
-Sudhakar suggested giving MRM access to the ACCU real-time technical metrics UI.
+  MRM observed overlapping file names across the two folders (promptInjection and tooldisclosure appear in both). MRM requested an authoritative consolidated list of guardrail/adversarial test cases and confirmation of which are planned for execution.
+
+### 7. Dispute Type Identification
+
+- Aditi asked about cases where dispute type is misidentified (e.g., out-of-scope types like merchandise return). Purnima confirmed the system does not pass dispute type downstream for out-of-scope disputes; it simply does not create a dispute. Jordan noted this should be documented as a model limitation if there are no plans to correct it before the pilot launch. Purnima confirmed that even if dispute type is wrong, agents can manually edit the field downstream.
 
 ---
 
@@ -83,20 +61,10 @@ Sudhakar suggested giving MRM access to the ACCU real-time technical metrics UI.
 
 | # | Owner | Action | Target |
 |---|-------|--------|--------|
-| 1 | John | Provide SME production quality review plan documentation to MRM | 05/15 |
-| 2 | Purnima | Complete DeepEval V11 run (evaluation CSV, conversation JSON, QIC logs); create JIRA ticket | 05/07 touchpoint |
-| 3 | Purnima / Aditi | Touchpoint to review DeepEval results | 05/07 |
-| 4 | Baloo | Send updated V11 per-turn flow diagram | 05/06 |
-| 5 | Baloo | Confirm whether Bedrock Guardrails (steps 9/19) are active on conversation path or tool path only | Email |
-| 6 | ~~Baloo~~ | ~~Forward AWS recommendation (instruction-based over policy-based) to MRM~~ Received 5/7 | ~~Email~~ Done |
-| 7 | Baloo / Ravi | Confirm whether Disclaimer tool is actively invoked or legacy artifact | Email |
-| 8 | ~~Baloo~~ | ~~Confirm whether adversarial test cases are included in the current DeepEval regression suite~~ Clarified 5/7: not included; follow-up with Sudhakar on scope expansion | ~~Email~~ Done |
-| 9 | Baloo | Investigate non-zero "unauthorized commitments" metric on sample UAT call | Next session |
-| 10 | Sudhakar / Baloo | Provide MRM access to ACCU real-time technical metrics UI | TBD |
-
-## PA Completion Dependencies
-
-1. DeepEval V11 results with evaluation CSV, conversation JSON, and QIC logs. [Based on the AWS phased guardrail strategy and the 5/7 clarification that guardrail/adversarial test files have not been run, this dependency now also includes execution of the adversarial and guardrail test suites beyond the original 33 SME test cases.]
-2. SME production quality review plan (sampling methodology, review medium, cadence, reviewer assignment).
-
-Current target pilot launch date: June 9, 2026.
+| 1 | Purnima | Manually pull QIC logs for the two flagged two-dispute cases; provide to MRM | EOD 05/07 or next day |
+| 2 | Purnima | Share all relevant JIRA story IDs for DeepEval runs | TBD |
+| 3 | Purnima | Send guardrail test case files (even unrun) to MRM | TBD |
+| 4 | Purnima / BL | Provide authoritative consolidated list of guardrail/adversarial test cases | TBD |
+| 5 | Jordan | Follow up with Sudhakar on guardrail DeepEval scope expansion | TBD |
+| 6 | MRM | Review DeepEval documentation (Confident AI) for metric calculation methodology | TBD |
+| 7 | MRM | Follow up with Ravi on disclaimer tool invocation behavior and prompt/agent version mapping (V11 = prompt V26? agent V32?) | TBD |
