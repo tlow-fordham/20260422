@@ -1,70 +1,24 @@
-# US Bank - DeepEval Technical Review Minutes
+Hi Sudhakar,
 
-**Completed by:** Jordan Low
-**Revised by:** [TBD]
+Following up from the 5/6 weekly meeting and the 5/7 DeepEval touchpoint with Purnima. There are a few items we'd like to align on regarding the DeepEval testing scope as we work toward PA completion.
 
-## Session Details
+1. Guardrail/adversarial test execution. During Baloo's platform walkthrough on 5/6, we observed guardrail and adversarial test case files in the GitLab repo that have not been included in the current DeepEval regression suite. Purnima confirmed during the 5/7 touchpoint that the 33-case suite was designed for SME testing coverage and that the scope expansion to include these files would need to come through you. There are two folders in the repo (test_cases/guardrail/ with 7 files and adversarial/ with 6 files), with some overlapping file names across the two. Given that the current architecture relies on instruction-based guardrails as the primary protection on the conversation path (per the AWS phased strategy), running these adversarial test cases on V11 would provide important evidence that the instruction-based approach is performing as intended. Can you confirm whether these tests can be executed as part of the current V11 regression run, and provide an authoritative list of which test cases should be included?
 
-- **PROJECT:** Model 7409 - Conversational AI in IVRs
-- **SESSION:** DeepEval Technical Review (Touchpoint)
-- **DATE:** 05/07/2026
-- **ATTENDEES:** Aditi Pandey (MRM), Mehdi Mafi (MRM), Jordan Low (MRM), Purnima Kamat (BL)
+2. Evaluation configuration. MRM reviewed the DeepEval documentation (Confident AI) and summarized the 20 metrics currently in use (metric definitions attached to the 5/7 minutes distribution). As the team prepares to run the guardrail/adversarial tests, two items are worth reviewing:
 
----
+   a. Context fields for adversarial test cases. Several of the LLM-as-judge metrics rely on context fields (such as chatbot_role, scenario, and expected_outcome) to produce meaningful evaluations. For adversarial test scenarios where the expected behavior is refusal rather than dispute completion, the judge needs that context to score correctly. For example, Conversational Tone and Empathy will penalize an agent that correctly refuses an adversarial request if the judge does not know the user is adversarial. Similarly, Merchant Contact Check, Dispute Confirmation, and Claim Submission Disclosure are dispute-flow metrics that would not apply to guardrail tests where no dispute was initiated. We'd suggest the team confirm that the evaluation configuration distinguishes between dispute-path and guardrail test types.
 
-## Minutes
+   b. Metric review. The team may find it helpful to organize the guardrails metrics by archetype, for example: safety-oriented metrics (No PII Disclosure, No System Disclosure, Decline Malicious Requests), tone and conduct metrics (Professional Tone, No Offensive Language, No Inappropriate Comments, Empathy, Conversational Tone), role and scope metrics (Guardrail Role Adherence, AI Disclaimer), and dispute-flow metrics (Merchant Contact Check, Dispute Confirmation, Claim Submission Disclosure). Within those groupings, the team could consider whether some metrics evaluate similar dimensions and could be consolidated (for example, Conversational Tone and Professional Tone, or No Offensive Language and No Inappropriate Comments). The metric definitions spreadsheet should help with that review.
 
-### 1. QIC Log Mismatches in Two-Dispute Scenarios
+   c. Claim reference number and PII metrics. The agent reads the Casper case reference number aloud to the customer digit by digit (e.g., "D dash 2 6 0 2 0 4 7 0 0 0 4 3"). An LLM-as-judge evaluating the No PII Disclosure metric may flag this as a potential PII disclosure depending on how broadly the judge interprets the criteria. This would be a false positive since reading the claim reference to the customer is required behavior. Worth confirming that the evaluator handles this correctly across dispute-path test cases.
 
-- Aditi flagged two cases where QIC logs did not align with regression results. In a two-dispute scenario, no eligibility or submit calls appeared in the QIC log for the second dispute (Shopify); only the first dispute (Temu) showed up. In a second two-dispute case (incorrect amount + duplicate charge), only one submit call was made instead of two.
-- Purnima confirmed she could see the same gaps and committed to manually pulling those two logs using Ravi's method. The automated script may have span-retrieval limitations. If the manual pull still shows missing calls, Purnima will escalate to Ravi.
+   d. Manual review scalability. Purnima noted during the 5/7 touchpoint that subjective metrics flagged by the LLM judge are currently resolved through manual review of each conversation JSON by the team. For the current regression suite this is manageable, but as the test suite expands to include adversarial/guardrail scenarios, the team may want to consider whether the evaluation configuration can reduce the volume of false positives that require manual disposition.
 
-### 2. Disclaimer Tool
+3. Evaluation configuration YAML. Our observations above are based on the DeepEval documentation and the configuration files visible in the GitLab repo, which may not reflect what was actually executed in the most recent regression run. To support our review, we'd like to formally request a copy of the evaluation configuration file as run (the YAML defining the metric blocks, thresholds, and parameters) as part of the test deliverables alongside the evaluation CSV, conversation JSON, and QIC logs.
 
-- Aditi noted a "disclaimer tool" appearing in QIC logs that was not previously documented. Purnima confirmed it is a native QIC tool, not a custom Lambda tool. Ravi would need to confirm its invocation behavior in V11.
-- Jordan noted that MRM has Connect console access and can see the agent versions. The latest version is always the deployed one.
+4. Timeline. The PA has two remaining dependencies: the DeepEval V11 results and John's SME production quality review plan (due May 15). If the adversarial/guardrail tests can be included in the current V11 run, that would allow us to address both the regression confirmation and the guardrail coverage in one pass. If they require a separate run, we'd appreciate a timeline so we can plan accordingly.
 
-### 3. DeepEval Evaluation Metrics
+Happy to discuss on a call if that's easier. We want to support the June 9 pilot timeline and keep things moving.
 
-- Aditi asked how "task completion" is determined. Purnima explained the two-step process: (1) LLM-as-caller simulates a dispute conversation with the agent, producing a JSON with session state; (2) LLM-as-judge evaluates the simulation output against the test JSON's source-of-truth fields (required fields, dispute type, amounts, etc.). The "success" status in the CSV reflects the simulation completing; task completion scoring comes from the evaluation step matching captured fields to expected values.
-- On the 0.929 score, Purnima stated she does not know exactly how DeepEval calculates it internally. The framework uses an LLM judge. The evaluation LLMs are Nova Pro and Claude Sonnet, configured in the DPL config file. Purnima provided the DeepEval GitHub link (Confident AI).
-
-### 4. Compiled Results
-
-- Jordan raised that validation typically expects the model owner to compile results and present a pass/fail determination, rather than having validators parse raw CSVs and JSONs.
-- Purnima noted she manually reviews each JSON for subjective metrics (empathy, professional language) and documents her observations in JIRA stories. She identified three JIRA stories created across runs and will share the IDs.
-
-### 5. Prompt vs. Agent Versioning
-
-- Aditi noted the prompt version (V26) does not match the agent version (V32) in the Connect console. Purnima acknowledged the versioning is confusing and stated Ravi can confirm what "V11" (referenced in a prior email as current production) maps to in terms of prompt and agent versions.
-
-### 6. Guardrail Testing Coverage and GitLab Repo
-
-- Aditi asked whether additional adversarial tests (DAN persona, prompt injection) had been run beyond the 33 regression cases. Purnima clarified the 33-case suite was designed for SME testing coverage (mapping to Linda's manual tests), not as a dedicated guardrail suite. It includes some guardrail cases (malicious, jailbreak, model disclosure, role play, tool disclosure) but is not comprehensive adversarial coverage.
-- Jordan referenced the additional guardrail test files visible in the DeepEval repo from Baloo's walkthrough the prior day. Purnima confirmed she has not run those files and stated the scope expansion would need to come through Sudhakar.
-- Jordan asked Purnima to at minimum send the unrun guardrail test case files so MRM can assess whether they need to be executed.
-- The GitLab repo (usb-fdi-deepeval) contains two folders with guardrail/adversarial test cases, neither included in the current regression run:
-
-  **test_cases/guardrail/** (Purnima, last updated ~1 month ago, 7 files): guardrail_dan_persona, guardrail_instruction_override, guardrail_persona_hijacking, guardrail_promptInjection, guardrail_prompt_injection, guardrail_repetition_begging, guardrail_tooldisclosure
-
-  **adversarial/** (Varun, last updated ~1-2 months ago, 6 files): jailbreak, malicious, politics, promptInjection, technology, tooldisclosure
-
-  MRM observed overlapping file names across the two folders (promptInjection and tooldisclosure appear in both). MRM requested an authoritative consolidated list of guardrail/adversarial test cases and confirmation of which are planned for execution.
-
-### 7. Dispute Type Identification
-
-- Aditi asked about cases where dispute type is misidentified (e.g., out-of-scope types like merchandise return). Purnima confirmed the system does not pass dispute type downstream for out-of-scope disputes; it simply does not create a dispute. Jordan noted this should be documented as a model limitation if there are no plans to correct it before the pilot launch. Purnima confirmed that even if dispute type is wrong, agents can manually edit the field downstream.
-
----
-
-## Action Items
-
-| # | Owner | Action | Target |
-|---|-------|--------|--------|
-| 1 | Purnima | Manually pull QIC logs for the two flagged two-dispute cases; provide to MRM | EOD 05/07 or next day |
-| 2 | Purnima | Share all relevant JIRA story IDs for DeepEval runs | TBD |
-| 3 | Purnima | Send guardrail test case files (even unrun) to MRM | TBD |
-| 4 | Purnima / BL | Provide authoritative consolidated list of guardrail/adversarial test cases | TBD |
-| 5 | Jordan | Follow up with Sudhakar on guardrail DeepEval scope expansion | TBD |
-| 6 | MRM | Review DeepEval documentation (Confident AI) for metric calculation methodology | TBD |
-| 7 | MRM | Follow up with Ravi on disclaimer tool invocation behavior and prompt/agent version mapping (V11 = prompt V26? agent V32?) | TBD |
+Regards,
+Jordan
