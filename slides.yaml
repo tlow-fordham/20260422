@@ -1,24 +1,165 @@
-Hi Sudhakar,
+# AI COE MPP First-Line Intelligence Log
 
-Following up from the 5/6 weekly meeting and the 5/7 DeepEval touchpoint with Purnima. There are a few items we'd like to align on regarding the DeepEval testing scope as we work toward PA completion.
+**Purpose:** Accumulated knowledge from AI COE Monthly Planning/Program (MPP) meetings, maintained for MRM second-line awareness. This document tracks first-line project status, pipeline signals, and development timelines as discussed in MPP sessions. Where a first-line project maps to a known MRM model ID, the ID is noted in parentheses for cross-reference only.
 
-1. Guardrail/adversarial test execution. During Baloo's platform walkthrough on 5/6, we observed guardrail and adversarial test case files in the GitLab repo that have not been included in the current DeepEval regression suite. Purnima confirmed during the 5/7 touchpoint that the 33-case suite was designed for SME testing coverage and that the scope expansion to include these files would need to come through you. There are two folders in the repo (test_cases/guardrail/ with 7 files and adversarial/ with 6 files), with some overlapping file names across the two. Given that the current architecture relies on instruction-based guardrails as the primary protection on the conversation path (per the AWS phased strategy), running these adversarial test cases on V11 would provide important evidence that the instruction-based approach is performing as intended. Can you confirm whether these tests can be executed as part of the current V11 regression run, and provide an authoritative list of which test cases should be included?
+**Maintained by:** Jordan Low, MRM AI Validation
+**Last updated:** May 9, 2026
 
-2. Evaluation configuration. MRM reviewed the DeepEval documentation (Confident AI) and summarized the 20 metrics currently in use (metric definitions attached to the 5/7 minutes distribution). As the team prepares to run the guardrail/adversarial tests, two items are worth reviewing:
+---
 
-   a. Context fields for adversarial test cases. Several of the LLM-as-judge metrics rely on context fields (such as chatbot_role, scenario, and expected_outcome) to produce meaningful evaluations. For adversarial test scenarios where the expected behavior is refusal rather than dispute completion, the judge needs that context to score correctly. For example, Conversational Tone and Empathy will penalize an agent that correctly refuses an adversarial request if the judge does not know the user is adversarial. Similarly, Merchant Contact Check, Dispute Confirmation, and Claim Submission Disclosure are dispute-flow metrics that would not apply to guardrail tests where no dispute was initiated. We'd suggest the team confirm that the evaluation configuration distinguishes between dispute-path and guardrail test types.
+## Active First-Line Project Tracker
 
-   b. Metric review. The team may find it helpful to organize the guardrails metrics by archetype, for example: safety-oriented metrics (No PII Disclosure, No System Disclosure, Decline Malicious Requests), tone and conduct metrics (Professional Tone, No Offensive Language, No Inappropriate Comments, Empathy, Conversational Tone), role and scope metrics (Guardrail Role Adherence, AI Disclaimer), and dispute-flow metrics (Merchant Contact Check, Dispute Confirmation, Claim Submission Disclosure). Within those groupings, the team could consider whether some metrics evaluate similar dimensions and could be consolidated (for example, Conversational Tone and Professional Tone, or No Offensive Language and No Inappropriate Comments). The metric definitions spreadsheet should help with that review.
+### Smart SME Portfolio
 
-   c. Claim reference number and PII metrics. The agent reads the Casper case reference number aloud to the customer digit by digit (e.g., "D dash 2 6 0 2 0 4 7 0 0 0 4 3"). An LLM-as-judge evaluating the No PII Disclosure metric may flag this as a potential PII disclosure depending on how broadly the judge interprets the criteria. This would be a false positive since reading the claim reference to the customer is required behavior. Worth confirming that the evaluator handles this correctly across dispute-path test cases.
+**Smart Assistant / ChatUSB (Model-7009 / Model-6803)**
+First-line owner: Tim Walker's team. ChatUSB is in production. The remaining work is integrating new solutions (Snowflake Cortex AI, CAS chatbot) into the ChatUSB platform. This team's board does not plan Smart Assistant work directly since a different delivery team owns it, but it remains part of the Smart SME portfolio.
 
-   d. Manual review scalability. Purnima noted during the 5/7 touchpoint that subjective metrics flagged by the LLM judge are currently resolved through manual review of each conversation JSON by the team. For the current regression suite this is manageable, but as the test suite expands to include adversarial/guardrail scenarios, the team may want to consider whether the evaluation configuration can reduce the volume of false positives that require manual disposition.
+- Status as of May 2026 MPP: In production (ChatUSB wrapper). Integration work ongoing.
 
-3. Evaluation configuration YAML. Our observations above are based on the DeepEval documentation and the configuration files visible in the GitLab repo, which may not reflect what was actually executed in the most recent regression run. To support our review, we'd like to formally request a copy of the evaluation configuration file as run (the YAML defining the metric blocks, thresholds, and parameters) as part of the test deliverables alongside the evaluation CSV, conversation JSON, and QIC logs.
+**Artemis Query Agent (Model-7306)**
+Pilot launched first week of May 2026. Monitoring runs through end of May (~4 weeks of data collection). EMA and MDD document submissions targeted for June 2026. On track. First-line owners: Sherin Mathews / Artemis team.
 
-4. Timeline. The PA has two remaining dependencies: the DeepEval V11 results and John's SME production quality review plan (due May 15). If the adversarial/guardrail tests can be included in the current V11 run, that would allow us to address both the regression confirmation and the guardrail coverage in one pass. If they require a separate run, we'd appreciate a timeline so we can plan accordingly.
+- Status as of May 2026 MPP: Pilot live, monitoring underway. EMA expected June.
 
-Happy to discuss on a call if that's easier. We want to support the June 9 pilot timeline and keep things moving.
+**Artemis Summary Agent**
+Kickoff completed. Requirements still evolving. A new requirement surfaced (summarizing paragraph-style notes/blogs with training-like work) that is unconfirmed. The EMQ has not been submitted, meaning the solution has not yet been formally deemed a model. Debbie Cermak set a deadline to press the business (Maria) for a decision by Monday May 12. The team discussed deferring the new requirement to a future release if it threatens the current timeline. A separate "reasoning agent" concept was raised as an internal research project, kept outside the Summary Agent scope. First-line owners: Jayalakshmi Mangalagiri / Satish Simhadri.
 
-Regards,
-Jordan
+- Status as of May 2026 MPP: Pre-EMQ. Requirements unstable. Decision deadline set for May 12.
+
+**MLO Product Selector**
+PwC has fully exited. The first-line team now owns the MLO Product Selector entirely. Work includes pre-production, validation, and potential remediation. Tony pushed back on characterizing this as "consulting" since it will consume real capacity over multiple months. Debbie agreed to add a visible planning marker. No new enhancements are defined yet, but it is not trivial BAU.
+
+- Status as of May 2026 MPP: Transitioning from PwC, pre-production work underway.
+
+**Lenny AI / Lending AI**
+Nearing production readiness. New knowledge bases being incorporated in May. Full production launch targeted for June 12, 2026. Dependency on Brian and Paul's AI Enablement deployment team. David indicated the project is on track.
+
+- Status as of May 2026 MPP: Final knowledge base integration. June 12 production target.
+
+**Leadership Insights**
+Active development. Satish's team working daily with Jeff's team on a deterministic SQL path for integration into the existing legacy path. POC access for Jeff and Fatima estimated at roughly early July 2026 (~8 weeks from May MPP). On-prem deployment, low memory intensity, API-based (no local models, no GPU dependency expected). Satish to confirm resource needs with Paul and Chenglin.
+
+- Status as of May 2026 MPP: Development phase. POC ~July 2026.
+
+**GCT Onboarding Agent Assist**
+POC reduced to one task (risk assessment) instead of three; Vidya's team not ready with data and guidelines for the other two tasks. New file upload capability needs to be built from scratch. FileNet access not expected until Q3 (~August 2026). Team discussed waiting for FileNet to minimize rework. This project competes for resources with First Line of Defense (shared developers: Lavanya and one other). Tentative decision to push GCT pilot from June to July 2026 (~4 week extension). Debbie plans to brief Vidya before the weekly GCT call.
+
+- Status as of May 2026 MPP: Descoped, delayed. Pilot pushed to ~July 2026.
+
+**First Line of Defense / 1LOD**
+Highest-priority first-line project. Sprint 4 wrapping up, Sprint 5 begins soon with UAT for a couple of use cases, Sprint 6 starts around June 6-9 with remaining use cases. Tech team (Krishna, Ganesh) tested Use Case 1 APIs throughout the week. Paul focused on migrating Use Case 1 into UAT and prod, with Use Case 2 to follow. High visibility with Dominic watching. Firm June timeline, which is why it takes priority over GCT.
+
+- Status as of May 2026 MPP: Sprint 4/5 transition. UAT in May/June. Production targeted June.
+
+**Mid-Funnel Model (new)**
+Flagged as an upcoming initiative. Has Prashant's approval, confirmed by Sammy and Gigi as needing to be on the board. Expected to start with EDA in May 2026. Sharon also had one or two additional new projects to surface.
+
+- Status as of May 2026 MPP: EDA starting. Very early stage.
+
+---
+
+### Document Intelligence Portfolio
+
+**Hedwig**
+Went live in April 2026. Team continuing to support pilot test analysis and A/B testing in May.
+
+- Status as of May 2026 MPP: Post-production. Pilot analysis ongoing.
+
+**Statement Analyzer / Freight (Model-7310)**
+Discussion about container optimization for production deployment. Concern about over-provisioning GPU resources (requesting 4 GPUs to avoid out-of-memory when 2 might suffice with proper optimization). Speaker argued this is a production infrastructure issue for Saima's team (Chenglin and others) to own, not the development team.
+
+- Status as of May 2026 MPP: Production infrastructure optimization discussion.
+
+**General Doc Intelligence status:** May is primarily discovery and readiness work with lighter direct delivery. Goal is to complete groundwork in May for June-July production releases. John Kaiser coordinating, Raj Bharadwaj and project leads contributing.
+
+---
+
+### Insights / Fraud Portfolio
+
+**Bart / Data Feeds for Risk Grading**
+Discussion focused on data feed readiness for fraud/risk use cases. Four data sources discussed: Falcon, Elavon, LOS, and Casper. Paramjit Chumber led the discussion.
+
+Falcon: Data already ingested into Hive on monthly cadence, but insufficient frequency for downstream risk grading. Data exists in Prime but must be made available in CDP Ops. By end of May, expectation is a documented impact analysis supporting a go/no-go decision on Falcon readiness for risk grading. Owner: Paul Carpenter.
+
+LOS: Explicitly deprioritized, placed on backlog.
+
+Casper: Can be analyzed in parallel with Falcon; both leverage data already in the feature store.
+
+Elavon: Active discussions ongoing. Primary contact (Katie) not present; no concrete status update.
+
+- Status as of May 2026 MPP: Data readiness assessment. Pre-model stage.
+
+---
+
+### H2/H3 Portfolio
+
+Minimal content captured from May MPP. Giacomo Domeniconi and Erin Feichtinger were observed as speakers. No substantive discussion or decisions recorded.
+
+---
+
+### AI Platforms
+
+**Infrastructure Migration**
+Discussion about users still on Power9 and Cloudera DS5 dev environments needing notification of migration targets and timelines. Target platform has not been communicated by Nick's team. This creates a communication gap.
+
+- Status as of May 2026 MPP: Migration target unknown. Communication gap flagged.
+
+**Credit Risk AI**
+Item deprioritized due to low business interest.
+
+---
+
+## On-Hold / Not Planned Projects
+
+| Project | Status | Notes |
+|---------|--------|-------|
+| CBBO Banker Assist | On hold | Completed previous engagement work. No new direction decided. Earliest restart June 2026. |
+| MPS Sales and Servicing | On hold | Waiting for data access. Sharon to follow up with Camela. |
+| Smart Assistant | Not planned by this team | Different delivery team owns it. Part of Smart SME portfolio. |
+| ChatUSB | Not planned by this team | In production. Tim Walker's team. Integration work is the remaining scope. |
+| MLO Product Selector | Support/consult (contested) | See active tracker above. Real capacity impact acknowledged. |
+
+---
+
+## Process and Logistics Notes
+
+**AI Enablement Deployment Tracking (new as of May 2026):**
+A new swim lane ("AI Enablement") and Jira component were introduced for tracking Brian, Paul, Samata, and Kartike's deployment work across archetypes. Teams should add stickies to that swim lane during planning and tag epics in Jira with both their project component and the new "AI Enablement" component. This allows the deployment team to see cross-archetype stories on a consolidated board.
+
+**Net New Room:**
+Removed from MPP breakout structure because PDLC runs its own planning. H2/H3 rooms remain. Mural board preserved for future use.
+
+**Capacity Planning Guidance:**
+Plan at 75-80% capacity. Account for summer vacations, COE office hours, and Track 2 commitments. Dependencies should be captured in both Mural and Jira.
+
+**Meeting Forwarding:**
+Open forwarding policy. Anyone can forward the MPP invite to additional participants.
+
+---
+
+## First-Line Pipeline Timeline
+
+| Project | Next Milestone | Estimated Timing |
+|---------|---------------|-----------------|
+| Artemis Query Agent (Model-7306) | EMA / MDD submission | June 2026 |
+| Lenny AI / Lending AI | Full production launch | June 12, 2026 |
+| 1LOD | UAT (Sprint 5/6) | May-June 2026 |
+| MLO Product Selector | Pre-production work | Ongoing |
+| Artemis Summary Agent | EMQ submission | Pending requirement decision |
+| Leadership Insights | POC access | ~July 2026 |
+| GCT Onboarding Agent Assist | Pilot | ~July 2026 (pushed from June) |
+| Mid-Funnel Model | EDA | Starting May 2026 |
+| Doc Intelligence (general) | June-July production releases | Groundwork in May |
+| Falcon data readiness | Impact analysis / go-no-go | End of May 2026 |
+
+---
+
+## Meeting Log
+
+| Date | Session | Rooms Covered | Key Developments |
+|------|---------|---------------|------------------|
+| May 7, 2026 | May Planning | Smart SME, Doc Intelligence, H2/H3, Insights/Fraud, AI Platforms | Artemis Query pilot live; Summary Agent pre-EMQ with requirement instability; 1LOD Sprint 4/5 transition with firm June deadline; GCT delayed to July; mid-funnel model flagged as new initiative; MLO ownership clarified post-PwC exit; AI Enablement tracking introduced; Falcon data readiness assessment due end of May; infrastructure migration communication gap identified |
+
+---
+
+*This document is maintained as a rolling log. Each MPP session adds to the active tracker, updates project statuses, and appends to the meeting log. Older entries are retained for trend tracking.*
