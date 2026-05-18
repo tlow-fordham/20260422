@@ -1,62 +1,115 @@
-# Model-7637 Conversational AI in IVR (Knowledgebase Integration) - Early Engagement Meeting Agenda
+# Model 7637 - Conversational AI in IVR (Knowledgebase Integration)
+# Early Engagement Meeting Minutes
 **Date:** May 18, 2026
-**Duration:** 30 minutes
+**Time:** 12:30 PM - 1:00 PM ET
+**Location:** Microsoft Teams
 
 **Attendees:**
-- MRM Validation: Xinyu Wu, Jordan Low, Aditi Pandey, Jinjun Tong, Mehdi Mafi
+- MRM Validation: Xinyu Wu, Jordan Low (organizer), Jinjun Tong (cc), Aditi Pandey
 - MRG: Sana Ahmed
-- Model Owner / Platform: John Lorence, Baloo Narayanan, Scott Hekman
-- Optional, if available: Melissa Martin, Lori Hamilton
+- Model Owner / Platform: John Lorence, Scott Hekman
+
+**Not present:**
+- David Rosenthal
+- Baloo Narayanan
 
 ---
 
-## 1. Prior Action Items and Deliverable Status (5 min)
+## 1. Prior Action Items and Deliverable Status
 
-The May 4 discussion resolved several architecture and scope items. The key open dependencies are the article inventory, Amazon Connect access, documentation progress, and test case development.
+**Article inventory and customer-facing suitability review (John, Items 4 and 7)**
+- John has not yet connected with Liz Eisert on the article breakdown or customer-facing suitability review
+- John stated he has been focused on Model 7409 and has not had time to devote to this model
+- No updated completion date was provided
 
-1. John: Has coordination with Liz Eisert been completed for the article inventory and customer-facing designation across 24Hr Banking, Card, and MPS?
-2. John / Baloo: What is the current status of the GenAI Model Development Template, starting with Section 6?
-3. Baloo / Scott: Can you provide the Amazon Connect / QIC agent name or configuration path for this model? Validation has read-only Amazon Connect access for another Connect AI model and may already have the access needed to review tools and system prompts directly once the agent is identified. If any artifacts are not visible through read-only access, can those be shared or walked through separately?
-4. Scott / Baloo: Has documentation for Cyara and DeepEval been obtained? Which evaluation metrics from either tool are you planning to use?
-5. John / Platform: Has any work started on DeepEval test cases for this model?
+**GenAI Model Development Template (John / Baloo, Item 17)**
+- John was unsure of the status and will check with Baloo on whether any progress has been made
+- Jordan reminded the group that this model is going straight into full production (initial validation, not provisional approval), and the documentation package is more substantial than what was required for Model 7409
+- The recommended starting point remains Section 6 (Model Design and Construction), followed by Section 5 and Section 7
+- A monitoring plan and implementation plan will also be required but can be worked on later
 
-## 2. Article Inventory and Data Controls (5 min)
+**Amazon Connect access (Item 18)**
+- The MRM team has access to the Amazon Connect UAT environment, but the AI agent for Model 7637 is not visible in the UAT console
+- John confirmed that no agents have been built for KB integration outside of ITSC at this time
+- The agents visible in UAT (including "Orchestration Unlimited" and "FDIA Dispute") belong to Model 7409; the ITSC agent exists only in the IT (dev) environment, not UAT
+- Scott will provide access to the ITSC Amazon Connect IT environment; the team should look for "usb-itsefullonivr-prompt"
+- This is not the final version for 7637 but will serve as a reference, since the KB integration model is expected to follow the same general pattern
 
-The article inventory from Liz Eisert is the key dependency for validation planning. If it is available, we would like to cover the following. If not, these will carry forward.
+**Evaluation tools (Item 10)**
+- Scott confirmed that Sierra is no longer being considered; the team is moving toward DeepEval for automated evaluation
+- Cyara will still be used for IVR testing but is not the automation capability for model evaluation
+- Jordan asked whether the model owner team has narrowed down which DeepEval metrics will be used, noting that the repository contains approximately 100 metrics, most of which do not apply to this model
+- Scott stated he needs Baloo to answer and mentioned the configuration would likely be the same as the dispute model
 
-1. John: What is the current article count by business line for 24Hr Banking, Card, and MPS, and which source repositories are in scope (ServiceNow, Salesforce, or other)?
-2. John: What article quality controls exist today, including approval workflow, staleness review, and duplicate detection?
-3. John / Baloo: How are articles added, modified, retired, and synchronized into QIC? Are there differences between the development, testing, and production article sets?
+---
 
-## 3. Section 6 Remaining N/A Confirmations (5 min)
+## 2. Article Inventory and Scope Discussion
 
-On May 4, the following were confirmed as not applicable: no fine-tuning or custom training, no graph database, no content-based feature generation, and articles ingested as-is. Three items remain open.
+Since each business line operates its own IVR with its own scoped article set, cross-BL article contamination is not a retrieval concern. However, within each BL's article set, the article count, topic organization, and content quality directly affect retrieval accuracy. Validation needs the article breakdown to understand the within-BL retrieval challenge and to plan test coverage accordingly.
 
-1. Baloo / John: Does the model do any planning, autonomous tool selection, or reasoning about which step to take next? Or does it follow a fixed retrieval-generation pipeline using only the OOTB Escalate and Complete tools?
-2. Baloo: Is there any custom code (Lambda functions, scripts, or internally developed components) in the model pipeline, or is the deployment entirely AWS-managed through QIC?
-3. Baloo: For retrieval pipeline details that are AWS-managed (chunking, embedding, relevance scoring), what has been communicated by AWS about how those components work? Has the team requested additional detail from AWS beyond what is visible in the QIC configuration?
+- John asked why article count is needed
+- Jordan explained that even within a single BL's article set, retrieval becomes more complex as the article count grows, particularly when semantically similar articles exist across adjacent topics within the same BL (e.g., a general escrow overview vs. a state-specific escrow article)
+- Sana noted the EMA references approximately 3,600 articles for 24Hr Banking
+- John stated the team would not go live with all of those articles at once and noted that other business lines (Card and MPS) also want to start at the same time
+- John emphasized the goal of getting approval for knowledge base integration as a whole, at scale, so that any group can move forward quickly without requiring months of individual work per business line
+- Jinjun noted that targeted validations can be performed after the initial validation when new business lines are onboarded
+- Jinjun also noted that if articles are too long, chunking becomes important, and that some models use parent-child chunking approaches
+- Scott asked what is required to obtain blanket approval for KB integration if the basic architecture remains the same (Claude Haiku, QIC Amazon platform)
 
-## 4. Section 6 Design and Configuration (7 min)
+**Xinyu provided the following guidance on enterprise-scale approval:**
+- The business line is still designing the application, and the second line of defense should not be part of the design process, as that would compromise independence; general principles can be discussed, but MRM will not participate in design decisions
+- If the model owner wants future business line expansions to proceed without triggering full targeted scope validations, the model should be designed with that goal in mind from the start
+- Although each BL operates its own IVR, the key risk factor for scalable expansion is whether the article format, length, layout, content structure, and metadata are consistent across business lines; if the retrieval algorithm and chunking configuration are optimized for one BL's article format and a new BL's articles differ significantly, the same pipeline may not perform equally well
+- Xinyu recommended pre-processing all KB articles to have a consistent look and feel across the full 65,000-article universe, so that the same retrieval algorithm can be applied to each new BL's IVR without re-optimization
+- When onboarding a new business line, the model owner would run performance testing; if results are consistent with baseline, the model change management process would be streamlined; if performance drops, root cause analysis would be needed
+- Xinyu shared observations from prior experience: article quality varies across business lines, some pre-processing has been done incorrectly in the past (truncating important information, resulting in incorrect answers to customers), article lengths vary widely (some 8-10 pages, others half a page), and titles vary in specificity
+- Expanding usage to a different business line is considered a material change that requires additional validation
 
-The remaining Section 6 focus is the QIC retrieval pipeline, system prompt, guardrails, multi-turn handling, and configuration change controls. If Validation can access the agent directly through Amazon Connect, the discussion can focus on confirming where the relevant configuration lives.
+**Jordan** demonstrated a data source article from "The Source" (U.S. Bank's internal KB portal) showing 17,082 results with articles organized by business line tags, to illustrate the volume and topic density within a single BL's article set and the importance of accurate retrieval when semantically similar articles exist within the same category.
 
-1. Baloo: Can you confirm the end-to-end model flow from customer utterance through Nova Sonic, QIC retrieval, Claude Haiku 4.5 response generation, guardrails, and spoken output?
-2. Baloo: For QIC retrieval, what is configurable by U.S. Bank versus AWS-managed? What is known about chunking, embedding model, retrieval algorithm, number of retrieved chunks, and relevance thresholds?
-3. Baloo: How are article tags used in retrieval? Are tags used as metadata filters, routing controls, or only for article organization?
-4. Baloo: How does multi-turn conversation history work, including max turns, context accumulation, and fallback or transfer handling?
-5. Baloo: What prompt-level instructions and Bedrock Guardrails settings control tone, scope, PII handling, off-topic responses, and fallback behavior?
-6. Baloo: What change management and access controls apply to the QIC configuration, system prompt, tools, and guardrail settings?
+**Scott** responded that the team is aligned on consistent formatting and tagging, with variations expected to be minimal and only smaller reviews required.
 
-## 5. Testing Approach (5 min, time permitting)
+---
 
-If time allows after the Section 6 discussion, we would like to begin aligning on the test case structure and SME evaluation approach.
+## 3. SDLC Overlap Discussion
 
-1. John / Platform: Have any test cases been started? If so, can you walk through an example showing the user scenario, expected outcome, source article, and how you plan to grade the response?
-2. John: How will the three BL SMEs (John Lorence, Melissa Martin, Lori Hamilton) be involved in curating ground truth and verifying expected answers in the test cases?
-3. John / Baloo: How are you thinking about test coverage across the three business lines? Are there plans to include edge cases, out-of-scope queries, and multi-turn interactions alongside common inquiries?
-4. John / Baloo: When a response is incorrect, how would you distinguish whether the issue was wrong article retrieval, hallucination from the correct article, incomplete source content, or an STT transcription error?
+- Scott asked whether testing performed as part of the SDLC could be reused instead of duplicating efforts
+- Xinyu responded that MRM focuses specifically on accuracy, not the broader SDLC concerns (security, functional testing, latency)
+- If accuracy testing artifacts already exist from SDLC, MRM can accept them as evidence, provided:
+  - The testing sample is sufficient
+  - SME review is included
+  - Automated testing is in place for broader coverage at scale
+- At the 65,000-article enterprise scale, automated testing and monitoring are expected, including dashboards showing relevancy scores, alerting on performance degradation, and flagging when product changes outpace article updates
 
-## 6. Next Steps (3 min)
+---
 
-1. John / Baloo / Scott: What materials can be provided before the next meeting?
-2. Should we schedule a focused offline session to walk through the Amazon Connect configuration and resolve the remaining Section 6 items directly?
+## 4. Next Steps
+
+- John will connect with his manager, Brian Howerton, to set up a broader discussion about model approval processes and speed to market across all models
+- Xinyu proposed discussing MRM's model change management policy at the next meeting to gather the business line's feedback
+
+---
+
+## After-Meeting Note
+
+- Scott shared a document on Nova Sonic formatting ("Nova Sonic Style Sheet.docx") and confirmed that the team is looking at standardized formatting for KB articles
+- Scott noted that the extra formatting typically present in KB articles today adds to the input tokens the LLM needs to parse, which causes additional latency and increases the possibility of inaccuracy
+
+---
+
+## Action Items
+
+| Owner | Item | Target |
+|---|---|---|
+| Scott | Provide IT environment entitlement for Amazon Connect so MRM can view the ITSC KB integration agent (look for "usb-itsefullonivr-prompt") | Next meeting |
+| John | Connect with Liz Eisert on article inventory breakdown and customer-facing suitability review (Items 4 and 7, outstanding since 3/20) | Next meeting |
+| John | Check with Baloo on GenAI Development Template progress (Item 17) | Next meeting |
+| Xinyu / Jordan | Prepare model change management policy overview for next meeting discussion | Next meeting |
+
+## Items Deferred to Next Session or Email
+
+- DeepEval metric selection for 7637 (requires Baloo)
+- Model change management policy walkthrough (Xinyu proposed for next meeting)
+- All Section 6 design and configuration questions (Sections 3 and 4 of the agenda; require Baloo)
+- Testing approach discussion (Section 5 of the agenda; not reached)
+- Article quality controls, synchronization, and change management (Section 2 Items 2-3 of the agenda; not reached)
